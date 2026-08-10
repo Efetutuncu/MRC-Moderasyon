@@ -31,15 +31,11 @@ export default {
 
       const content = 'Lütfen kayıt olmak için alttaki emojiye tıklayınız. (Lütfen spam atmayınız.)';
 
-      // Tek bir mesaj olarak kanala yanıt ver
-      const sentMsg = await interaction.reply({
+      // Kanala tek bir mesaj ve buton gönder
+      await interaction.reply({
         content: content,
         components: [row],
-        fetchReply: true,
       });
-
-      // Mesaja ✅ reaksiyonunu ekle
-      await sentMsg.react('✅').catch(() => null);
     } catch (error) {
       console.error('[HATA] Kayıt paneli gönderilemedi:', error);
       try {
