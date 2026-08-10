@@ -245,7 +245,8 @@ process.on('message', async (msg) => {
   if (msg.type === 'send_registration_panel') {
     const { requestId } = msg;
     try {
-      const channel = await client.channels.fetch(process.env.WELCOME_CHANNEL_ID).catch(() => null);
+      const regChannelId = process.env.REGISTRATION_CHANNEL_ID || process.env.WELCOME_CHANNEL_ID || '1533665242091884544';
+      const channel = await client.channels.fetch(regChannelId).catch(() => null);
       if (!channel) {
         throw new Error('Hoş geldin / Kayıt kanalı bulunamadı.');
       }
