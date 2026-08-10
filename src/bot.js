@@ -5,10 +5,19 @@
  */
 
 import 'dotenv/config';
-import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
+import {
+  Client,
+  Collection,
+  GatewayIntentBits,
+  Partials,
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+} from 'discord.js';
 import { loadCommands } from './handlers/commandHandler.js';
 import { loadEvents } from './handlers/eventHandler.js';
 import { loadViolations } from './utils/violationTracker.js';
+import { getRoles } from './utils/roleConfig.js';
 
 // Gerekli ortam değişkenlerini doğrula
 const requiredEnvVars = [
@@ -48,7 +57,6 @@ async function bootstrap() {
     await client.login(process.env.DISCORD_TOKEN);
   } catch (error) {
     console.error('[HATA] Bot başlatılırken sorun oluştu:', error);
-    // Üst sürece hata bildir
     if (process.send) {
       process.send({ type: 'error', message: error.message });
     }
@@ -88,6 +96,148 @@ setInterval(() => {
     });
   }
 }, 30_000);
+
+// --- IPC MESAJ DİNLEYİCİSİ (Web sunucusundan gelen emirler) ---
+process.on('message', async (msg) => {
+  if (!msg || !msg.type) return;
+
+  // Moderasyon İşlemi (Ban, Kick, Timeout)
+  if (msg.type === 'mod_action') {
+    const { action, userId, reason, durationMinutes, requestId, requestedBy } = msg;
+    try {
+      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+      if (!guild) {
+        throw new Error('Sunucuya ulaşılamadı.');
+      }
+
+      if (action === 'ban') {
+        await guild.members.ban(userId, {
+          reason: `${reason || 'Web panelinden yasaklandı.'} | Yetkili: ${requestedBy}`,
+        });
+        if (process.send) {
+          process.send({
+            type: 'mod_action_res',
+            requestId,
+            success: true,
+            message: 'Kullanıcı başarıyla yasaklandı.',
+          });
+        }
+        return;
+      }
+
+      const targetMember = await guild.members.fetch(userId).catch(() => null);
+      if (!targetMember) {
+        throw new Error('Kullanıcı sunucuda bulunamadı.');
+      }
+
+      if (action === 'kick') {
+        if (!targetMember.kickable) {
+          throw new Error('Bu kullanıcıyı atma yetkim yok.');
+        }
+        await targetMember.kick(`${reason || 'Web panelinden atıldı.'} | Yetkili: ${requestedBy}`);
+        if (process.send) {
+          process.send({
+            type: 'mod_action_res',
+            requestId,
+            success: true,
+            message: 'Kullanıcı başarıyla sunucudan atıldı.',
+          });
+        }
+        return;
+      }
+
+      if (action === 'timeout') {
+        if (!targetMember.moderatable) {
+          throw new Error('Bu kullanıcıya zaman aşımı uygulama yetkim yok.');
+        }
+        const mins = parseInt(durationMinutes) || 10;
+        await targetMember.timeout(
+          mins * 60 * 1000,
+          `${reason || 'Web panelinden uygulandı.'} | Yetkili: ${requestedBy}`
+        );
+        if (process.send) {
+          process.send({
+            type: 'mod_action_res',
+            requestId,
+            success: true,
+            message: `Kullanıcıya ${mins} dakika zaman aşımı uygulandı.`,
+          });
+        }
+        return;
+      }
+
+      throw new Error('Geçersiz moderasyon eylemi.');
+    } catch (err) {
+      if (process.send) {
+        process.send({
+          type: 'mod_action_res',
+          requestId,
+          success: false,
+          error: err.message,
+        });
+      }
+    }
+  }
+
+  // Rol Paneli Gönderme
+  if (msg.type === 'send_role_panel') {
+    const { requestId } = msg;
+    try {
+      const channel = await client.channels.fetch(process.env.WELCOME_CHANNEL_ID).catch(() => null);
+      if (!channel) {
+        throw new Error('Hoş geldin kanalı bulunamadı.');
+      }
+
+      const roles = getRoles();
+      if (roles.length === 0) {
+        throw new Error('Panel için tanımlı oyun rolü bulunmuyor.');
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 Oyun Rolleri Seçim Paneli')
+        .setDescription(
+          'Aşağıdaki menüden oynamak istediğiniz oyunların rollerini seçebilirsiniz!\nSeçtiğiniz roller profilinize otomatik eklenecektir.'
+        )
+        .setColor(0x5865f2)
+        .setFooter({ text: 'MRC Moderasyon Sistemleri' });
+
+      const options = roles.map((r) => ({
+        label: r.label,
+        value: r.roleId,
+        emoji: r.emoji || '🎮',
+      }));
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('select_game_roles')
+        .setPlaceholder('🎮 Oyun rollerinizi seçin...')
+        .setMinValues(0)
+        .setMaxValues(options.length)
+        .addOptions(options);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await channel.send({ embeds: [embed], components: [row] });
+
+      if (process.send) {
+        process.send({
+          type: 'send_role_panel_res',
+          requestId,
+          success: true,
+          message: 'Rol paneli başarıyla kanala gönderildi!',
+        });
+      }
+    } catch (err) {
+      if (process.send) {
+        process.send({
+          type: 'send_role_panel_res',
+          requestId,
+          success: false,
+          error: err.message,
+        });
+      }
+    }
+  }
+});
 
 process.on('unhandledRejection', (reason) => {
   console.error('[HATA] İşlenmemiş Promise reddi:', reason);
