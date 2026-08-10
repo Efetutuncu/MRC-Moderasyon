@@ -8,8 +8,6 @@ import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { loadCommands } from './handlers/commandHandler.js';
 import { loadEvents } from './handlers/eventHandler.js';
 import { loadViolations } from './utils/violationTracker.js';
-import { handleRoleInteractions } from './handlers/roleHandler.js';
-import { startWebServer } from '../site/server.js';
 
 // Gerekli ortam değişkenlerinin tanımlı olduğunu doğrula
 const requiredEnvVars = [
@@ -29,46 +27,51 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
-// Discord istemcisini oluştur
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers, // Üye katılım/ayrılma event'leri için zorunlu
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildMessages, // messageCreate event'i için zorunlu
-    GatewayIntentBits.MessageContent, // Mesaj içeriği okuma (spam/flood) için zorunlu
-  ],
-  partials: [Partials.GuildMember],
-});
+// Global çifte başlatma engelleyicisi
+if (!global.__BOT_STARTED__) {
+  global.__BOT_STARTED__ = true;
 
-// Komut koleksiyonunu istemciye ekle
-client.commands = new Collection();
+  // Discord istemcisini oluştur
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildModeration,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+    partials: [Partials.GuildMember],
+  });
 
-/**
- * Botu başlat
- */
-async function bootstrap() {
-  try {
-    // 1. Kayıtlı ihlal verilerini yükle
-    await loadViolations();
+  client.commands = new Collection();
 
-    // 2. Komutları ve event'leri yükle
-    await loadCommands(client);
-    await loadEvents(client);
+  async function bootstrap() {
+    try {
+      await loadViolations();
+      await loadCommands(client);
+      await loadEvents(client);
 
-    // 3. Önce Discord'a bağlan
-    await client.login(process.env.DISCORD_TOKEN);
+      await client.login(process.env.DISCORD_TOKEN);
 
-    // 4. Bot başarılı şekilde bağlandıktan sonra Web Sunucusunu başlat
-    await startWebServer(client);
+      // Web sunucusunu dinamik olarak tek seferlik import et
+      try {
+        const { startWebServer } = await import('../site/server.js');
+        if (typeof startWebServer === 'function') {
+          await startWebServer(client);
+        }
+      } catch (webErr) {
+        console.warn('[BİLDİRİM] Web sunucusu başlatılamadı veya mevcut değil:', webErr.message);
+      }
 
-  } catch (error) {
-    console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
-    process.exit(1);
+    } catch (error) {
+      console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
+      process.exit(1);
+    }
   }
+
+  bootstrap();
 }
 
-// Yakalanmamış hataları yakala — botun çökmesini engelle
 process.on('unhandledRejection', (reason) => {
   console.error('[HATA] İşlenmemiş Promise reddi:', reason);
 });
@@ -76,5 +79,3 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
   console.error('[HATA] Yakalanmamış istisna:', error);
 });
-
-bootstrap();
