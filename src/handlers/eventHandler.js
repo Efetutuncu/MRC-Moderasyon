@@ -31,7 +31,7 @@ export async function loadEvents(client) {
         const eventModule = await import(`${pathToFileURL(filePath).href}?update=${Date.now()}`);
         const event = eventModule.default;
 
-        // Event yapısını doğrula
+     // Event yapısını doğrula
         if (!event?.name || typeof event.execute !== 'function') {
           console.warn(`[UYARI] Geçersiz event dosyası atlandı: ${filePath}`);
           continue;
@@ -51,12 +51,3 @@ export async function loadEvents(client) {
         }
 
         console.log(`[EVENT] Yüklendi: ${eventName}${event.once ? ' (tek seferlik)' : ''}`);
-      } catch (error) {
-        console.error(`[HATA] Event yüklenemedi (${filePath}):`, error);
-      }
-    }
-  } catch (error) {
-    console.error('[HATA] Event handler başlatılamadı:', error);
-    throw error;
-  }
-}
