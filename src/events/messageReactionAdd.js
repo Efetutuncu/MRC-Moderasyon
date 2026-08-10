@@ -29,7 +29,7 @@ export default {
       if (!member) return;
 
       const unregisteredRoleId = process.env.UNREGISTERED_ROLE_ID;
-      const registeredRoleId = process.env.REGISTERED_ROLE_ID;
+      const registeredRoleId = process.env.REGISTERED_ROLE_ID || '1533614099064291408';
 
       let changesMade = false;
 

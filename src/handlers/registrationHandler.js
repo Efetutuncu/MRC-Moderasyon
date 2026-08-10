@@ -20,7 +20,7 @@ export async function handleRegistrationInteraction(interaction) {
     }
 
     const unregisteredRoleId = process.env.UNREGISTERED_ROLE_ID;
-    const registeredRoleId = process.env.REGISTERED_ROLE_ID; // İsteğe bağlı kayıtlı üye rolü
+    const registeredRoleId = process.env.REGISTERED_ROLE_ID || '1533614099064291408';
 
     let changesMade = false;
 
