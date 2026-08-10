@@ -11,11 +11,6 @@ import {
   listAdmins,
 } from './adminManager.js';
 import { getRoles, saveRoles } from '../src/utils/roleConfig.js';
-import {
-  EmbedBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-} from 'discord.js';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +45,31 @@ export function addActivityLog(type, message) {
   if (activityLogs.length > 150) activityLogs.pop();
 }
 
+// --- IPC İSTEK TAKİBİ ---
+const pendingRequests = new Map();
+
+function sendBotCommand(type, payload, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    if (!botProcess || !botStatus.online) {
+      return reject(new Error('Bot çevrimdışı. Önce botu çalıştırın.'));
+    }
+
+    const requestId = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const timer = setTimeout(() => {
+      pendingRequests.delete(requestId);
+      reject(new Error('Bot yanıt vermedi (Zaman aşımı).'));
+    }, timeoutMs);
+
+    pendingRequests.set(requestId, { resolve, reject, timer });
+
+    botProcess.send({
+      type,
+      requestId,
+      ...payload,
+    });
+  });
+}
+
 // --- BOT BAŞLATMA ---
 function startBot() {
   if (botProcess) {
@@ -61,10 +81,12 @@ function startBot() {
 
   botProcess = fork(BOT_SCRIPT, [], {
     env: process.env,
-    silent: false, // stdout/stderr terminale yansısın
+    silent: false,
   });
 
   botProcess.on('message', (msg) => {
+    if (!msg || !msg.type) return;
+
     if (msg.type === 'ready') {
       botStatus = {
         online: true,
@@ -91,6 +113,20 @@ function startBot() {
 
     if (msg.type === 'error') {
       addActivityLog('ERROR', `Bot hatası: ${msg.message}`);
+    }
+
+    // IPC Yanıtlarını Yakala
+    if (msg.type === 'mod_action_res' || msg.type === 'send_role_panel_res') {
+      const pending = pendingRequests.get(msg.requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingRequests.delete(msg.requestId);
+        if (msg.success) {
+          pending.resolve(msg);
+        } else {
+          pending.reject(new Error(msg.error || 'İşlem başarısız.'));
+        }
+      }
     }
   });
 
@@ -176,7 +212,7 @@ export async function startWebServer() {
       );
       addActivityLog('INFO', `Web paneline giriş: ${admin.email}`);
       return res.json({ token, user: admin });
-    } catch (err) {
+    } catch {
       return res.status(500).json({ error: 'Giriş yapılırken hata oluştu.' });
     }
   });
@@ -215,7 +251,7 @@ export async function startWebServer() {
   app.post('/api/bot/restart', authMiddleware, (req, res) => {
     stopBot();
     setTimeout(() => {
-      const result = startBot();
+      startBot();
       addActivityLog('INFO', 'Bot yeniden başlatıldı.');
     }, 1500);
     return res.json({ message: 'Bot yeniden başlatılıyor...' });
@@ -255,7 +291,7 @@ export async function startWebServer() {
   });
 
   // ======================
-  // MODERASYOn & İHLALLER
+  // MODERASYON & İHLALLER
   // ======================
 
   app.get('/api/moderation/violations', authMiddleware, (req, res) => {
@@ -271,12 +307,26 @@ export async function startWebServer() {
   });
 
   app.post('/api/moderation/action', authMiddleware, async (req, res) => {
-    if (!botStatus.online) {
-      return res.status(400).json({ error: 'Bot çevrimdışı. Önce botu başlatın.' });
+    const { action, userId, reason, durationMinutes } = req.body;
+
+    if (!userId || !action) {
+      return res.status(400).json({ error: 'Kullanıcı ID ve işlem türü seçilmelidir.' });
     }
-    // Bot çalışıyorsa moderasyon işlemi bot sürecine mesaj olarak iletilir
-    // (Şimdilik hata döndür — bot online kontrolü yeterli)
-    return res.status(503).json({ error: 'Moderasyon işlemleri için botun çalışıyor olması gerekir. Bot çalışırken Discord komutlarını kullanın.' });
+
+    try {
+      const result = await sendBotCommand('mod_action', {
+        action,
+        userId,
+        reason,
+        durationMinutes,
+        requestedBy: req.user.email,
+      });
+
+      addActivityLog('MODERATION', `Web Paneli — ${action.toUpperCase()}: ${userId} (${reason || 'Sebep yok'})`);
+      return res.json({ message: result.message });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
   });
 
   // ======================
@@ -316,6 +366,16 @@ export async function startWebServer() {
       return res.json({ message: 'Rol kaldırıldı.', roles });
     } catch {
       return res.status(500).json({ error: 'Rol silinemedi.' });
+    }
+  });
+
+  app.post('/api/roles/send-panel', authMiddleware, async (req, res) => {
+    try {
+      const result = await sendBotCommand('send_role_panel', {});
+      addActivityLog('SUCCESS', 'Web Paneli — Rol seçim paneli kanala gönderildi.');
+      return res.json({ message: result.message });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
     }
   });
 
