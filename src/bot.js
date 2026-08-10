@@ -57,7 +57,7 @@ async function bootstrap() {
 }
 
 // Bot hazır olduğunda üst sürece bildir
-client.once('clientReady', (readyClient) => {
+client.once('ready', (readyClient) => {
   console.log(`[BOT] ${readyClient.user.tag} olarak giriş yapıldı!`);
   const guild = readyClient.guilds.cache.first();
   if (process.send) {
