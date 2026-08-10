@@ -10,6 +10,7 @@ import { loadEvents } from './handlers/eventHandler.js';
 import { loadViolations } from './utils/violationTracker.js';
 import { handleRoleInteractions } from './handlers/roleHandler.js';
 import { startWebServer } from '../site/server.js';
+
 // Gerekli ortam değişkenlerinin tanımlı olduğunu doğrula
 const requiredEnvVars = [
   'DISCORD_TOKEN',
@@ -29,10 +30,6 @@ for (const envVar of requiredEnvVars) {
 }
 
 // Discord istemcisini oluştur
-//
-// ÖNEMLİ — Privileged Gateway Intents (Developer Portal'da açılmalı):
-// • Server Members Intent  → guildMemberAdd event'i için
-// • Message Content Intent → mesaj içeriğini okuyarak spam/flood tespiti için
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -44,7 +41,7 @@ const client = new Client({
   partials: [Partials.GuildMember],
 });
 
-// Komut koleksiyonunu istemciye ekle (interactionCreate event'inde kullanılacak)
+// Komut koleksiyonunu istemciye ekle
 client.commands = new Collection();
 
 /**
@@ -52,18 +49,19 @@ client.commands = new Collection();
  */
 async function bootstrap() {
   try {
-    // Kayıtlı ihlal verilerini JSON dosyasından yükle
+    // 1. Kayıtlı ihlal verilerini yükle
     await loadViolations();
 
-    // Komutları ve event'leri dinamik olarak yükle
+    // 2. Komutları ve event'leri yükle
     await loadCommands(client);
     await loadEvents(client);
 
-    // Web yönetim sunucusunu başlat
+    // 3. Önce Discord'a bağlan
+    await client.login(process.env.DISCORD_TOKEN);
+
+    // 4. Bot başarılı şekilde bağlandıktan sonra Web Sunucusunu başlat
     await startWebServer(client);
 
-    // Discord'a bağlan
-    await client.login(process.env.DISCORD_TOKEN);
   } catch (error) {
     console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
     process.exit(1);
