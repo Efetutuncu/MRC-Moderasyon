@@ -3,10 +3,10 @@
  * Bot Discord'a bağlandığında slash komutlarını API'ye kaydeder.
  */
 
-import { REST, Routes } from 'discord.js';
+import { Events, REST, Routes } from 'discord.js';
 
 export default {
-  name: 'clientReady',
+  name: Events.ClientReady,
   once: true,
 
   /**
