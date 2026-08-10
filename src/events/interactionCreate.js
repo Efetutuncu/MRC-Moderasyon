@@ -3,6 +3,8 @@
  * Slash komut etkileşimlerini yakalar ve ilgili komuta yönlendirir.
  */
 import { handleRoleInteractions } from '../handlers/roleHandler.js';
+import { handleRegistrationInteraction } from '../handlers/registrationHandler.js';
+
 export default {
   name: 'interactionCreate',
 
@@ -11,6 +13,9 @@ export default {
    * @param {import('discord.js').Client} client - Discord istemcisi
    */
   async execute(interaction, client) {
+    const isRegistration = await handleRegistrationInteraction(interaction);
+    if (isRegistration) return;
+
     await handleRoleInteractions(interaction);
     // Sadece slash komutlarını işle
     if (!interaction.isChatInputCommand()) return;

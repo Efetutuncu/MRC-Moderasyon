@@ -1,6 +1,7 @@
 /**
  * Guild Member Add Event
- * Yeni bir üye sunucuya katıldığında kayıtsız rolü verir ve hoş geldin mesajı gönderir.
+ * Yeni bir üye sunucuya katıldığında sadece kayıtsız rolü verir.
+ * Kayıt mesajı kanalda sabit durur, yeni üye tıklayarak kayıt olur.
  */
 
 export default {
@@ -12,7 +13,6 @@ export default {
    */
   async execute(member, client) {
     await assignUnregisteredRole(member);
-    await sendWelcomeMessage(member);
   },
 };
 
@@ -36,7 +36,6 @@ async function assignUnregisteredRole(member) {
       return;
     }
 
-    // Üyede rol zaten varsa tekrar ekleme
     if (member.roles.cache.has(role.id)) {
       return;
     }
@@ -45,35 +44,5 @@ async function assignUnregisteredRole(member) {
     console.log(`[ROL] ${member.user.tag} kullanıcısına "${role.name}" rolü verildi.`);
   } catch (error) {
     console.error(`[HATA] ${member.user.tag} kullanıcısına rol verilemedi:`, error);
-  }
-}
-
-/**
- * Hoş geldin kanalına karşılama mesajı gönderir
- * @param {import('discord.js').GuildMember} member
- */
-async function sendWelcomeMessage(member) {
-  try {
-    const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
-
-    if (!welcomeChannelId) {
-      console.warn('[UYARI] WELCOME_CHANNEL_ID tanımlı değil, hoş geldin mesajı gönderilemedi.');
-      return;
-    }
-
-    const welcomeChannel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
-
-    if (!welcomeChannel?.isTextBased()) {
-      console.warn(`[UYARI] Hoş geldin kanalı bulunamadı veya metin kanalı değil: ${welcomeChannelId}`);
-      return;
-    }
-
-    const welcomeMessage =
-      `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\n` +
-      `Seninle birlikte ${member.guild.memberCount} kişi olduk.`;
-
-    await welcomeChannel.send(welcomeMessage);
-  } catch (error) {
-    console.error('[HATA] Hoş geldin mesajı gönderilirken sorun oluştu:', error);
   }
 }

@@ -116,7 +116,11 @@ function startBot() {
     }
 
     // IPC Yanıtlarını Yakala
-    if (msg.type === 'mod_action_res' || msg.type === 'send_role_panel_res') {
+    if (
+      msg.type === 'mod_action_res' ||
+      msg.type === 'send_role_panel_res' ||
+      msg.type === 'send_registration_panel_res'
+    ) {
       const pending = pendingRequests.get(msg.requestId);
       if (pending) {
         clearTimeout(pending.timer);
@@ -373,6 +377,16 @@ export async function startWebServer() {
     try {
       const result = await sendBotCommand('send_role_panel', {});
       addActivityLog('SUCCESS', 'Web Paneli — Rol seçim paneli kanala gönderildi.');
+      return res.json({ message: result.message });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/registration/send-panel', authMiddleware, async (req, res) => {
+    try {
+      const result = await sendBotCommand('send_registration_panel', {});
+      addActivityLog('SUCCESS', 'Web Paneli — ErensiBOT kayıt paneli kanala gönderildi.');
       return res.json({ message: result.message });
     } catch (err) {
       return res.status(400).json({ error: err.message });

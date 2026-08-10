@@ -469,6 +469,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ErensiBOT Kayıt Paneli Gönder
+  document.getElementById('send-registration-panel-btn').addEventListener('click', async () => {
+    try {
+      const res = await apiFetch('/registration/send-panel', { method: 'POST' });
+      if (!res) return;
+      showToast(res.message, 'success');
+      loadActivityLogs();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
   // --- YÖNETİCİ HESAPLARI ---
   async function loadAdmins() {
     try {
