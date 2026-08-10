@@ -2,8 +2,10 @@
  * Guild Member Add Event
  * Yeni bir üye sunucuya katıldığında:
  * 1. Otomatik kayıtsız rolü verir.
- * 2. WELCOME_CHANNEL_ID (1533603998479941782) kanalına 1 adet hoş geldin mesajı gönderir.
+ * 2. WELCOME_CHANNEL_ID kanalına TAM 1 ADET hoş geldin mesajı gönderir (Debounce korumalı).
  */
+
+const recentlyWelcomed = new Set();
 
 export default {
   name: 'guildMemberAdd',
@@ -39,10 +41,19 @@ async function assignUnregisteredRole(member) {
 }
 
 /**
- * Hoş geldin kanalına (1533603998479941782) TAM 1 ADET karşılama mesajı gönderir
+ * Hoş geldin kanalına TAM 1 ADET karşılama mesajı gönderir (Çift mesaj korumalı)
  * @param {import('discord.js').GuildMember} member
  */
 async function sendWelcomeMessage(member) {
+  // Eğer bu üyeye son 15 saniyede mesaj atıldıysa tekrar atma (Çift mesaj engelleme)
+  if (recentlyWelcomed.has(member.id)) {
+    console.log(`[BİLDİRİM] ${member.user.tag} için tekrar eden mesaj engellendi.`);
+    return;
+  }
+
+  recentlyWelcomed.add(member.id);
+  setTimeout(() => recentlyWelcomed.delete(member.id), 15000);
+
   try {
     const welcomeChannelId = process.env.WELCOME_CHANNEL_ID || '1533603998479941782';
 
