@@ -1,12 +1,12 @@
 /**
- * Ready Event
+ * ClientReady Event
  * Bot Discord'a bağlandığında slash komutlarını API'ye kaydeder.
  */
 
-import { REST, Routes, Events } from 'discord.js';
+import { REST, Routes } from 'discord.js';
 
 export default {
-  name: Events.ClientReady, // 'clientReady' event adı çift tetiklenmeyi engeller
+  name: 'clientReady',
   once: true,
 
   /**
@@ -29,7 +29,7 @@ export default {
 
       console.log(`[API] ${commands.length} slash komutu kaydediliyor...`);
 
-      // Guild bazlı kayıt — geliştirme ve sunucu içi anında güncelleme
+      // Guild bazlı kayıt
       await rest.put(
         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
         { body: commands }
