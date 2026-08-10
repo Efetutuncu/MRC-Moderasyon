@@ -13,6 +13,8 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { loadCommands } from './handlers/commandHandler.js';
 import { loadEvents } from './handlers/eventHandler.js';
@@ -42,9 +44,10 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
   ],
-  partials: [Partials.GuildMember],
+  partials: [Partials.GuildMember, Partials.Message, Partials.Reaction],
 });
 
 client.commands = new Collection();
@@ -230,6 +233,50 @@ process.on('message', async (msg) => {
       if (process.send) {
         process.send({
           type: 'send_role_panel_res',
+          requestId,
+          success: false,
+          error: err.message,
+        });
+      }
+    }
+  }
+
+  // ErensiBOT Kayıt Paneli Gönderme
+  if (msg.type === 'send_registration_panel') {
+    const { requestId } = msg;
+    try {
+      const channel = await client.channels.fetch(process.env.WELCOME_CHANNEL_ID).catch(() => null);
+      if (!channel) {
+        throw new Error('Hoş geldin / Kayıt kanalı bulunamadı.');
+      }
+
+      const registerBtn = new ButtonBuilder()
+        .setCustomId('btn_user_register')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success);
+
+      const row = new ActionRowBuilder().addComponents(registerBtn);
+
+      const sentMsg = await channel.send({
+        content: 'Lütfen kayıt olmak için alttaki emojiye tıklayınız. (Lütfen spam atmayınız.)',
+        components: [row],
+      });
+
+      // ErensiBOT tarzı mesaja ✅ reaksiyonu da otomatik ekle
+      await sentMsg.react('✅').catch(() => null);
+
+      if (process.send) {
+        process.send({
+          type: 'send_registration_panel_res',
+          requestId,
+          success: true,
+          message: 'Kayıt paneli hoş geldin kanalına başarıyla gönderildi!',
+        });
+      }
+    } catch (err) {
+      if (process.send) {
+        process.send({
+          type: 'send_registration_panel_res',
           requestId,
           success: false,
           error: err.message,
