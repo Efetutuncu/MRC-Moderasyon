@@ -37,14 +37,20 @@ export async function loadEvents(client) {
           continue;
         }
 
-        // Event listener bağlama
-        if (event.once) {
-          client.once(event.name, (...args) => event.execute(...args, client));
-        } else {
-          client.on(event.name, (...args) => event.execute(...args, client));
+        // Deprecation uyarısını önlemek için 'ready' adını 'clientReady' olarak zorla
+        let eventName = event.name;
+        if (eventName === 'ready') {
+          eventName = 'clientReady';
         }
 
-        console.log(`[EVENT] Yüklendi: ${event.name}${event.once ? ' (tek seferlik)' : ''}`);
+        // Event listener bağlama
+        if (event.once) {
+          client.once(eventName, (...args) => event.execute(...args, client));
+        } else {
+          client.on(eventName, (...args) => event.execute(...args, client));
+        }
+
+        console.log(`[EVENT] Yüklendi: ${eventName}${event.once ? ' (tek seferlik)' : ''}`);
       } catch (error) {
         console.error(`[HATA] Event yüklenemedi (${filePath}):`, error);
       }
