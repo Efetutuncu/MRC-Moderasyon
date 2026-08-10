@@ -18,13 +18,17 @@ export async function loadEvents(client) {
   const eventsPath = join(__dirname, '..', 'events');
 
   try {
+    // Mevcut dinamik dinleyicileri temizle (çifte tetiklenmeyi engeller)
+    client.removeAllListeners();
+
     const eventFiles = readdirSync(eventsPath).filter((file) => file.endsWith('.js'));
 
     for (const file of eventFiles) {
       const filePath = join(eventsPath, file);
 
       try {
-        const eventModule = await import(pathToFileURL(filePath).href);
+        // Cache bypass için versiyon parametresi ile import et
+        const eventModule = await import(`${pathToFileURL(filePath).href}?update=${Date.now()}`);
         const event = eventModule.default;
 
         // Event yapısını doğrula
@@ -33,7 +37,7 @@ export async function loadEvents(client) {
           continue;
         }
 
-        // once: true ise event yalnızca bir kez tetiklenir
+        // Event listener bağlama
         if (event.once) {
           client.once(event.name, (...args) => event.execute(...args, client));
         } else {
