@@ -401,10 +401,29 @@ export async function startWebServer() {
   app.listen(PORT, () => {
     console.log(`[WEB] Yönetim Paneli aktif: http://localhost:${PORT}`);
 
-    // Bulut ortamında (Koyeb, Railway vb.) botu otomatik başlat
+    // Bulut ortamında (Koyeb, Railway, Render vb.) botu otomatik başlat
     if (process.env.BOT_AUTOSTART === 'true') {
       console.log('[WEB] BOT_AUTOSTART=true — Bot otomatik başlatılıyor...');
       setTimeout(() => startBot(), 2000);
     }
   });
+
+  // --- TEMİZ KAPANIŞ (Render/Koyeb yeni deploy sırasında eski süreci öldürür) ---
+  // Bu handler olmadan, platform eski instance'ı SIGTERM ile kapatırken forklanmış
+  // bot süreci arkada YAŞAMAYA DEVAM edebilir. Yeni instance ayağa kalkıp kendi
+  // botunu başlattığında, Discord'a AYNI TOKEN ile İKİ AYRI gateway bağlantısı
+  // açılmış olur — mesajlar/komutlar bu yüzden 2 (veya deploy sırasına göre daha
+  // fazla) kere işlenir. Panelin "1 kere başlatıldı" göstermesi normaldir çünkü
+  // panel sadece KENDİ instance'ının hafızasındaki durumu bilir, diğer (ölmeyen)
+  // eski instance'tan haberi yoktur.
+  const shutdown = (signal) => {
+    console.log(`[WEB] ${signal} alındı, temiz kapanış başlatılıyor...`);
+    if (botProcess) {
+      botProcess.kill('SIGTERM');
+      botProcess = null;
+    }
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
