@@ -9,8 +9,8 @@ export default {
     processedMembers.add(member.id);
     setTimeout(() => processedMembers.delete(member.id), 5000);
 
-    // 1. OTOMATİK KAYITSIZ ROLÜ VERME
-    const unverifiedRoleId = process.env.UNVERIFIED_ROLE_ID || process.env.KAYITSIZ_ROL_ID;
+    // 1. OTOMATİK KAYITSIZ ROLÜ VERME (UNVERIFIED_ROLE / UNVERIFIED_ROLE_ID desteği)
+    const unverifiedRoleId = process.env.UNVERIFIED_ROLE || process.env.UNVERIFIED_ROLE_ID || process.env.KAYITSIZ_ROL_ID;
     if (unverifiedRoleId) {
       try {
         await member.roles.add(unverifiedRoleId);
