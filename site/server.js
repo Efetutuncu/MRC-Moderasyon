@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
-import { fork } from 'child_process';
 import {
   initSeedAdmin,
   authenticateAdmin,
@@ -17,21 +16,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mrc-moderasyon-secret-key-2026';
-const BOT_SCRIPT = path.join(__dirname, '..', 'src', 'bot.js');
-
-// --- BOT SÜREÇ YÖNETİMİ ---
-let botProcess = null;
-let botStatus = {
-  online: false,
-  tag: null,
-  avatarURL: null,
-  ping: -1,
-  uptime: 0,
-  guildCount: 0,
-  guildName: '-',
-  memberCount: 0,
-  channelsCount: 0,
-};
 
 // --- AKTİVİTE LOGLARI ---
 const activityLogs = [];
@@ -43,123 +27,6 @@ export function addActivityLog(type, message) {
     message,
   });
   if (activityLogs.length > 150) activityLogs.pop();
-}
-
-// --- IPC İSTEK TAKİBİ ---
-const pendingRequests = new Map();
-
-function sendBotCommand(type, payload, timeoutMs = 10000) {
-  return new Promise((resolve, reject) => {
-    if (!botProcess || !botStatus.online) {
-      return reject(new Error('Bot çevrimdışı. Önce botu çalıştırın.'));
-    }
-
-    const requestId = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const timer = setTimeout(() => {
-      pendingRequests.delete(requestId);
-      reject(new Error('Bot yanıt vermedi (Zaman aşımı).'));
-    }, timeoutMs);
-
-    pendingRequests.set(requestId, { resolve, reject, timer });
-
-    botProcess.send({
-      type,
-      requestId,
-      ...payload,
-    });
-  });
-}
-
-// --- BOT BAŞLATMA ---
-function startBot() {
-  if (botProcess) {
-    addActivityLog('WARN', 'Bot zaten çalışıyor, yeniden başlatma isteği reddedildi.');
-    return { success: false, message: 'Bot zaten çalışıyor.' };
-  }
-
-  addActivityLog('INFO', 'Bot başlatılıyor...');
-
-  botProcess = fork(BOT_SCRIPT, [], {
-    env: process.env,
-    silent: false,
-  });
-
-  botProcess.on('message', (msg) => {
-    if (!msg || !msg.type) return;
-
-    if (msg.type === 'ready') {
-      botStatus = {
-        online: true,
-        tag: msg.tag,
-        avatarURL: msg.avatarURL,
-        ping: 0,
-        uptime: 0,
-        guildCount: msg.guildCount,
-        guildName: msg.guildName,
-        memberCount: msg.memberCount,
-        channelsCount: msg.channelsCount,
-      };
-      addActivityLog('SUCCESS', `Bot Discord'a bağlandı: ${msg.tag}`);
-    }
-
-    if (msg.type === 'status') {
-      botStatus.online = true;
-      botStatus.ping = msg.ping;
-      botStatus.uptime = msg.uptime;
-      botStatus.guildCount = msg.guildCount;
-      botStatus.memberCount = msg.memberCount;
-      botStatus.channelsCount = msg.channelsCount;
-    }
-
-    if (msg.type === 'error') {
-      addActivityLog('ERROR', `Bot hatası: ${msg.message}`);
-    }
-
-    // IPC Yanıtlarını Yakala
-    if (
-      msg.type === 'mod_action_res' ||
-      msg.type === 'send_role_panel_res' ||
-      msg.type === 'send_registration_panel_res'
-    ) {
-      const pending = pendingRequests.get(msg.requestId);
-      if (pending) {
-        clearTimeout(pending.timer);
-        pendingRequests.delete(msg.requestId);
-        if (msg.success) {
-          pending.resolve(msg);
-        } else {
-          pending.reject(new Error(msg.error || 'İşlem başarısız.'));
-        }
-      }
-    }
-  });
-
-  botProcess.on('exit', (code) => {
-    botStatus.online = false;
-    botProcess = null;
-    addActivityLog(code === 0 ? 'INFO' : 'WARN', `Bot süreci sona erdi (kod: ${code ?? 'sinyal'}).`);
-  });
-
-  botProcess.on('error', (err) => {
-    addActivityLog('ERROR', `Bot süreci hatası: ${err.message}`);
-    botProcess = null;
-    botStatus.online = false;
-  });
-
-  return { success: true, message: 'Bot başlatma komutu gönderildi.' };
-}
-
-// --- BOT DURDURMA ---
-function stopBot() {
-  if (!botProcess) {
-    return { success: false, message: 'Bot zaten çalışmıyor.' };
-  }
-
-  addActivityLog('WARN', 'Bot durduruluyor...');
-  botProcess.kill('SIGTERM');
-  botProcess = null;
-  botStatus.online = false;
-  return { success: true, message: 'Bot durduruldu.' };
 }
 
 // --- WEB SUNUCUSUNU BAŞLAT ---
@@ -225,42 +92,6 @@ export async function startWebServer() {
     return res.json({ user: req.user });
   });
 
-  // ======================
-  // BOT DURUM & KONTROL
-  // ======================
-
-  app.get('/api/bot/status', authMiddleware, (req, res) => {
-    return res.json({
-      ...botStatus,
-      running: botProcess !== null,
-    });
-  });
-
-  app.post('/api/bot/start', authMiddleware, (req, res) => {
-    const result = startBot();
-    if (result.success) {
-      return res.json({ message: result.message });
-    }
-    return res.status(400).json({ error: result.message });
-  });
-
-  app.post('/api/bot/stop', authMiddleware, (req, res) => {
-    const result = stopBot();
-    if (result.success) {
-      return res.json({ message: result.message });
-    }
-    return res.status(400).json({ error: result.message });
-  });
-
-  app.post('/api/bot/restart', authMiddleware, (req, res) => {
-    stopBot();
-    setTimeout(() => {
-      startBot();
-      addActivityLog('INFO', 'Bot yeniden başlatıldı.');
-    }, 1500);
-    return res.json({ message: 'Bot yeniden başlatılıyor...' });
-  });
-
   app.get('/api/bot/logs', authMiddleware, (req, res) => {
     return res.json({ logs: activityLogs });
   });
@@ -310,29 +141,6 @@ export async function startWebServer() {
     }
   });
 
-  app.post('/api/moderation/action', authMiddleware, async (req, res) => {
-    const { action, userId, reason, durationMinutes } = req.body;
-
-    if (!userId || !action) {
-      return res.status(400).json({ error: 'Kullanıcı ID ve işlem türü seçilmelidir.' });
-    }
-
-    try {
-      const result = await sendBotCommand('mod_action', {
-        action,
-        userId,
-        reason,
-        durationMinutes,
-        requestedBy: req.user.email,
-      });
-
-      addActivityLog('MODERATION', `Web Paneli — ${action.toUpperCase()}: ${userId} (${reason || 'Sebep yok'})`);
-      return res.json({ message: result.message });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
-    }
-  });
-
   // ======================
   // ROL YÖNETİMİ
   // ======================
@@ -370,26 +178,6 @@ export async function startWebServer() {
       return res.json({ message: 'Rol kaldırıldı.', roles });
     } catch {
       return res.status(500).json({ error: 'Rol silinemedi.' });
-    }
-  });
-
-  app.post('/api/roles/send-panel', authMiddleware, async (req, res) => {
-    try {
-      const result = await sendBotCommand('send_role_panel', {});
-      addActivityLog('SUCCESS', 'Web Paneli — Rol seçim paneli kanala gönderildi.');
-      return res.json({ message: result.message });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/registration/send-panel', authMiddleware, async (req, res) => {
-    try {
-      const result = await sendBotCommand('send_registration_panel', {});
-      addActivityLog('SUCCESS', 'Web Paneli — ErensiBOT kayıt paneli kanala gönderildi.');
-      return res.json({ message: result.message });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
     }
   });
 
