@@ -174,7 +174,7 @@ export async function startWebServer() {
   await initSeedAdmin();
   addActivityLog('INFO', `Web sunucusu başlatıldı — http://localhost:${PORT}`);
 
-  // --- JWT MİDDLEWARE ---
+  // --- JWT MIDDLEWARE ---
   const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -400,11 +400,5 @@ export async function startWebServer() {
 
   app.listen(PORT, () => {
     console.log(`[WEB] Yönetim Paneli aktif: http://localhost:${PORT}`);
-
-    // Bulut ortamında (Koyeb, Railway vb.) botu otomatik başlat
-    if (process.env.BOT_AUTOSTART === 'true') {
-      console.log('[WEB] BOT_AUTOSTART=true — Bot otomatik başlatılıyor...');
-      setTimeout(() => startBot(), 2000);
-    }
   });
 }
