@@ -1,56 +1,57 @@
 export default {
   name: 'interactionCreate',
   async execute(interaction) {
+    // 1. BUTON TIKLAMALARI (Kayıt Butonu)
     if (interaction.isButton()) {
       try {
         await interaction.deferReply({ ephemeral: true });
 
         const member = interaction.member;
-        const unverifiedRoleId = process.env.UNVERIFIED_ROLE || process.env.UNVERIFIED_ROLE_ID;
-        const unregisteredRoleId = process.env.UNREGISTERED_ROLE || process.env.UNREGISTERED_ROLE_ID;
+        
+        // Rol Değişkenleri (.env paneline %100 uyumlu)
+        const unverifiedRoleId = process.env.UNVERIFIED_ROLE_ID || process.env.UNVERIFIED_ROLE; // Silinecek Kayıtsız Rolü
+        const registeredRoleId = process.env.REGISTERED_ROLE_ID || process.env.REGISTERED_ROLE || process.env.UNREGISTERED_ROLE_ID; // Verilecek Üye Rolü
 
-        // Terminal Logu (Hangi ID'lerin geldiğini görmek için)
-        console.log(`[KAYIT ISLEMI] UNVERIFIED ID: ${unverifiedRoleId} | UNREGISTERED ID: ${unregisteredRoleId}`);
-
-        if (!unregisteredRoleId) {
-          console.error('[HATA] UNREGISTERED_ROLE (.env) tanimlanmamis veya okunamiyor!');
-          return await interaction.editReply({ content: 'Sistem hatası: Üye rolü ID\'si bulunamadı.' });
-        }
-
-        // 1. Kayıtsız rolünü sil
+        // 1. Kayıtsız (UNVERIFIED) rolünü kullanıcıdan sil
         if (unverifiedRoleId && member.roles.cache.has(unverifiedRoleId)) {
           await member.roles.remove(unverifiedRoleId).catch((err) => 
             console.error('[HATA] Kayıtsız rolü silinemedi:', err.message)
           );
         }
 
-        // 2. Üye rolünü ekle
-        await member.roles.add(unregisteredRoleId).then(() => {
-          console.log(`[BAŞARILI] ${member.user.tag} kullanıcısına üye rolü verildi.`);
-        }).catch((err) => {
-          console.error('[HATA] Üye rolü verilemedi. Discord Hatası:', err.message);
-        });
+        // 2. Üye (REGISTERED) rolünü kullanıcıya ver
+        if (registeredRoleId) {
+          await member.roles.add(registeredRoleId).then(() => {
+            console.log(`[BAŞARILI] ${member.user.tag} kullanıcısına kayıtlı üye rolü verildi.`);
+          }).catch((err) => {
+            console.error('[HATA] Üye rolü verilemedi. Discord Hatası:', err.message);
+          });
+        } else {
+          console.error('[HATA] REGISTERED_ROLE_ID (.env) bulunamadı!');
+        }
 
         await interaction.editReply({
           content: '🎉 Başarıyla kayıt oldunuz! Sunucuya erişiminiz açıldı.',
         });
       } catch (error) {
-        console.error('[HATA] Buton hatası:', error);
+        console.error('[HATA] Buton etkileşimi sırasında hata:', error);
         if (interaction.deferred) {
-          await interaction.editReply({ content: 'Kayıt sırasında bir hata oluştu.' });
+          await interaction.editReply({ content: 'Kayıt işlemi sırasında bir hata oluştu.' });
         }
       }
       return;
     }
 
+    // 2. SLASH KOMUTLARI
     if (interaction.isChatInputCommand()) {
       const command = interaction.client.commands.get(interaction.commandName);
+
       if (!command) return;
 
       try {
         await command.execute(interaction);
       } catch (error) {
-        console.error(`[HATA] ${interaction.commandName} çalıştırılamadı:`, error);
+        console.error(`[HATA] ${interaction.commandName} komutu çalıştırılamadı:`, error);
         const errorMsg = { content: 'Komut çalıştırılırken bir hata oluştu!', ephemeral: true };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(errorMsg);
