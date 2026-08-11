@@ -18,7 +18,7 @@ export async function loadEvents(client) {
   const eventsPath = join(__dirname, '..', 'events');
 
   try {
-    // Mevcut tüm dinamik dinleyicileri temizle (çifte tetiklenmeyi engeller)
+    // Mevcut dinamik event dinleyicilerini tamamen temizle
     client.removeAllListeners();
 
     const eventFiles = readdirSync(eventsPath).filter((file) => file.endsWith('.js'));
@@ -27,26 +27,26 @@ export async function loadEvents(client) {
       const filePath = join(eventsPath, file);
 
       try {
-        // Cache bypass için versiyon parametresi ile import et
-        const eventModule = await import(`${pathToFileURL(filePath).href}?update=${Date.now()}`);
-        const event = eventModule.default;
+        const eventModule = await import(pathToFileURL(filePath).href);
+        const event = eventModule.default || eventModule;
 
-        // Event yapısını doğrula
         if (!event?.name || typeof event.execute !== 'function') {
-          console.warn(`[UYARI] Geçersiz event dosyası atlandı: ${filePath}`);
+          console.warn(`[UYARI] Geçersiz event dosyası atlandı: ${file}`);
           continue;
         }
 
-        // Deprecation uyarısını önlemek için 'ready' adını 'clientReady' olarak zorla
         let eventName = event.name;
         if (eventName === 'ready') {
           eventName = 'clientReady';
         }
 
+        // Event handler'ın çifte tetiklenmesini engelle
+        const handler = (...args) => event.execute(...args);
+
         if (event.once) {
-          client.once(eventName, (...args) => event.execute(...args));
+          client.once(eventName, handler);
         } else {
-          client.on(eventName, (...args) => event.execute(...args));
+          client.on(eventName, handler);
         }
       } catch (err) {
         console.error(`[HATA] Event yüklenirken sorun oluştu (${file}):`, err);
