@@ -3,6 +3,7 @@ const processedMembers = new Set();
 export default {
   name: 'guildMemberAdd',
   async execute(member) {
+    // Çifte mesaj gönderimini engellemek için 5 saniyelik kilit
     if (processedMembers.has(member.id)) return;
     
     processedMembers.add(member.id);
@@ -12,11 +13,13 @@ export default {
     if (!channel) return;
 
     try {
+      const memberCount = member.guild.memberCount;
+
       await channel.send({
-        content: `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Kuralları okumayı unutma! 🎉`,
+        content: `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\nSeninle birlikte ${memberCount} kişi olduk.`,
       });
     } catch (err) {
-      console.error('[HATA] Hoş geldin mesajı gönderilemedi:', err);
+      console.error('[HATA] Hoş geldin mesajı gönderilirken sorun oluştu:', err);
     }
   },
 };
