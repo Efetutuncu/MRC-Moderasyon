@@ -69,8 +69,10 @@ async function bootstrap() {
 }
 
 // Bot hazır olduğunda üst sürece bildir
+// NOT: Log satırı burada BASILMIYOR — aynı log zaten src/events/ready.js
+// içinde basılıyor (eventHandler tüm events/ klasörünü otomatik yüklüyor).
+// İkisi birden çalışırsa log iki kere görünüyor, o yüzden log tekilleştirildi.
 client.once('ready', (readyClient) => {
-  console.log(`[BOT] ${readyClient.user.tag} olarak giriş yapıldı!`);
   const guild = readyClient.guilds.cache.first();
   if (process.send) {
     process.send({
@@ -286,6 +288,18 @@ process.on('message', async (msg) => {
       }
     }
   }
+});
+
+// --- TEMİZ KAPANIŞ ---
+// server.js bu süreci SIGTERM ile öldürdüğünde Discord gateway bağlantısını
+// düzgün kapat. Bu olmadan, eski deploy'un bot süreci Render tarafından
+// zorla (SIGKILL) kesilene kadar Discord'a bağlı kalabilir ve yeni deploy'un
+// bot süreciyle birlikte aynı token'la İKİ AKTİF bağlantı oluşur (çift mesaj/
+// çift komut işlemenin ana sebebi budur).
+process.on('SIGTERM', () => {
+  console.log('[BOT] SIGTERM alındı, Discord bağlantısı kapatılıyor...');
+  client.destroy();
+  process.exit(0);
 });
 
 process.on('unhandledRejection', (reason) => {
