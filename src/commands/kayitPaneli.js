@@ -1,6 +1,5 @@
 /**
  * Kayıt Paneli Gönderme Komutu (/kayit-paneli)
- * ErensiBOT tarzı kayıt mesajını ve butonunu kanala TEK BİR MESAJ olarak gönderir.
  */
 
 import {
@@ -14,7 +13,7 @@ import {
 export default {
   data: new SlashCommandBuilder()
     .setName('kayit-paneli')
-    .setDescription('ErensiBOT tarzı üye kayıt panelini kanala gönderir.')
+    .setDescription('Üye kayıt panelini kanala gönderir.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   /**
@@ -22,6 +21,9 @@ export default {
    */
   async execute(interaction) {
     try {
+      // Çifte yanıt engeli
+      if (interaction.replied || interaction.deferred) return;
+
       const registerBtn = new ButtonBuilder()
         .setCustomId('btn_user_register')
         .setEmoji('✅')
@@ -29,21 +31,13 @@ export default {
 
       const row = new ActionRowBuilder().addComponents(registerBtn);
 
-      const content = 'Lütfen kayıt olmak için alttaki emojiye tıklayınız. (Lütfen spam atmayınız.)';
-
-      // Kanala tek bir mesaj ve buton gönder
+      // Kanala doğrudan etkileşim yanıtı olarak TEK mesaj gönder
       await interaction.reply({
-        content: content,
+        content: 'Lütfen kayıt olmak için alttaki emojiye tıklayınız. (Lütfen spam atmayınız.)',
         components: [row],
       });
     } catch (error) {
       console.error('[HATA] Kayıt paneli gönderilemedi:', error);
-      try {
-        await interaction.reply({
-          content: `❌ Paneli gönderirken hata oluştu: ${error.message}`,
-          ephemeral: true,
-        });
-      } catch {}
     }
   },
 };
