@@ -1,37 +1,76 @@
-const processedMembers = new Set();
+/**
+ * Guild Member Add Event
+ * Yeni bir üye sunucuya katıldığında:
+ * 1. Otomatik kayıtsız rolü verir.
+ * 2. WELCOME_CHANNEL_ID kanalına TAM 1 ADET hoş geldin mesajı gönderir (Debounce korumalı).
+ */
+
+const recentlyWelcomed = new Set();
 
 export default {
   name: 'guildMemberAdd',
-  async execute(member) {
-    // Çifte mesaj ve rol tetiklenmesini engellemek için 5 saniyelik kilit
-    if (processedMembers.has(member.id)) return;
-    
-    processedMembers.add(member.id);
-    setTimeout(() => processedMembers.delete(member.id), 5000);
 
-    // 1. OTOMATİK KAYITSIZ ROLÜ VERME (UNVERIFIED_ROLE / UNVERIFIED_ROLE_ID desteği)
-    const unverifiedRoleId = process.env.UNVERIFIED_ROLE || process.env.UNVERIFIED_ROLE_ID || process.env.KAYITSIZ_ROL_ID;
-    if (unverifiedRoleId) {
-      try {
-        await member.roles.add(unverifiedRoleId);
-        console.log(`[ROL] ${member.user.tag} kullanıcısına kayıtsız rolü verildi.`);
-      } catch (err) {
-        console.error('[HATA] Kayıtsız rolü verilirken sorun oluştu:', err);
-      }
-    }
-
-    // 2. HOŞ GELDİN MESAJI
-    const channel = member.guild.channels.cache.get(process.env.WELCOME_CHANNEL_ID);
-    if (!channel) return;
-
-    try {
-      const memberCount = member.guild.memberCount;
-
-      await channel.send({
-        content: `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\nSeninle birlikte ${memberCount} kişi olduk.`,
-      });
-    } catch (err) {
-      console.error('[HATA] Hoş geldin mesajı gönderilirken sorun oluştu:', err);
-    }
+  /**
+   * @param {import('discord.js').GuildMember} member - Sunucuya katılan üye
+   * @param {import('discord.js').Client} client - Discord istemcisi
+   */
+  async execute(member, client) {
+    await assignUnregisteredRole(member);
+    await sendWelcomeMessage(member);
   },
 };
+
+/**
+ * Yeni katılan üyeye kayıtsız rolünü otomatik verir
+ * @param {import('discord.js').GuildMember} member
+ */
+async function assignUnregisteredRole(member) {
+  try {
+    const roleId = process.env.UNREGISTERED_ROLE_ID;
+
+    if (!roleId) return;
+
+    const role = await member.guild.roles.fetch(roleId).catch(() => null);
+    if (!role || member.roles.cache.has(role.id)) return;
+
+    await member.roles.add(role, 'Yeni üye — kayıtsız rolü otomatik atandı');
+    console.log(`[ROL] ${member.user.tag} kullanıcısına "${role.name}" rolü verildi.`);
+  } catch (error) {
+    console.error(`[HATA] ${member.user.tag} kullanıcısına rol verilemedi:`, error);
+  }
+}
+
+/**
+ * Hoş geldin kanalına TAM 1 ADET karşılama mesajı gönderir (Çift mesaj korumalı)
+ * @param {import('discord.js').GuildMember} member
+ */
+async function sendWelcomeMessage(member) {
+  // Eğer bu üyeye son 15 saniyede mesaj atıldıysa tekrar atma (Çift mesaj engelleme)
+  if (recentlyWelcomed.has(member.id)) {
+    console.log(`[BİLDİRİM] ${member.user.tag} için tekrar eden mesaj engellendi.`);
+    return;
+  }
+
+  recentlyWelcomed.add(member.id);
+  setTimeout(() => recentlyWelcomed.delete(member.id), 15000);
+
+  try {
+    const welcomeChannelId = process.env.WELCOME_CHANNEL_ID || '1533603998479941782';
+
+    const welcomeChannel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
+
+    if (!welcomeChannel?.isTextBased()) {
+      console.warn(`[UYARI] Hoş geldin kanalı bulunamadı veya metin kanalı değil: ${welcomeChannelId}`);
+      return;
+    }
+
+    const welcomeMessage =
+      `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Kuralları okumayı unutma!\n` +
+      `Seninle birlikte **${member.guild.memberCount}** kişi olduk. 🎉`;
+
+    await welcomeChannel.send(welcomeMessage);
+    console.log(`[HOŞ GELDİN] ${member.user.tag} için hoş geldin mesajı gönderildi.`);
+  } catch (error) {
+    console.error('[HATA] Hoş geldin mesajı gönderilirken sorun oluştu:', error);
+  }
+}

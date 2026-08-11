@@ -18,9 +18,6 @@ export async function loadEvents(client) {
   const eventsPath = join(__dirname, '..', 'events');
 
   try {
-    // Mevcut dinamik event dinleyicilerini tamamen temizle
-    client.removeAllListeners();
-
     const eventFiles = readdirSync(eventsPath).filter((file) => file.endsWith('.js'));
 
     for (const file of eventFiles) {
@@ -28,33 +25,28 @@ export async function loadEvents(client) {
 
       try {
         const eventModule = await import(pathToFileURL(filePath).href);
-        const event = eventModule.default || eventModule;
+        const event = eventModule.default;
 
+        // Event yapısını doğrula
         if (!event?.name || typeof event.execute !== 'function') {
-          console.warn(`[UYARI] Geçersiz event dosyası atlandı: ${file}`);
+          console.warn(`[UYARI] Geçersiz event dosyası atlandı: ${filePath}`);
           continue;
         }
 
-        let eventName = event.name;
-        if (eventName === 'ready') {
-          eventName = 'clientReady';
-        }
-
-        // Event handler'ın çifte tetiklenmesini engelle
-        const handler = (...args) => event.execute(...args);
-
+        // once: true ise event yalnızca bir kez tetiklenir
         if (event.once) {
-          client.once(eventName, handler);
+          client.once(event.name, (...args) => event.execute(...args, client));
         } else {
-          client.on(eventName, handler);
+          client.on(event.name, (...args) => event.execute(...args, client));
         }
-      } catch (err) {
-        console.error(`[HATA] Event yüklenirken sorun oluştu (${file}):`, err);
+
+        console.log(`[EVENT] Yüklendi: ${event.name}${event.once ? ' (tek seferlik)' : ''}`);
+      } catch (error) {
+        console.error(`[HATA] Event yüklenemedi (${filePath}):`, error);
       }
     }
-
-    console.log(`[HANDLER] Toplam ${eventFiles.length} event başarıyla yüklendi.`);
   } catch (error) {
-    console.error('[HATA] Event dizini okunurken sorun oluştu:', error);
+    console.error('[HATA] Event handler başlatılamadı:', error);
+    throw error;
   }
 }

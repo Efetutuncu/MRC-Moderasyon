@@ -8,7 +8,8 @@ import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { loadCommands } from './handlers/commandHandler.js';
 import { loadEvents } from './handlers/eventHandler.js';
 import { loadViolations } from './utils/violationTracker.js';
-
+import { handleRoleInteractions } from './handlers/roleHandler.js';
+import { startWebServer } from '../site/server.js';
 // Gerekli ortam değişkenlerinin tanımlı olduğunu doğrula
 const requiredEnvVars = [
   'DISCORD_TOKEN',
@@ -22,57 +23,54 @@ const requiredEnvVars = [
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     console.error(`[HATA] Eksik ortam değişkeni: ${envVar}`);
-    console.error('Lütfen .env dosyanızı doldurun.');
+    console.error('Lütfen .env dosyanızı .env.example dosyasına göre doldurun.');
     process.exit(1);
   }
 }
 
-// Global çifte başlatma engelleyicisi (Sadece TEK BİR KERE çalışmasını garanti eder)
-if (!global.__BOT_INITIALIZED__) {
-  global.__BOT_INITIALIZED__ = true;
+// Discord istemcisini oluştur
+//
+// ÖNEMLİ — Privileged Gateway Intents (Developer Portal'da açılmalı):
+// • Server Members Intent  → guildMemberAdd event'i için
+// • Message Content Intent → mesaj içeriğini okuyarak spam/flood tespiti için
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers, // Üye katılım/ayrılma event'leri için zorunlu
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildMessages, // messageCreate event'i için zorunlu
+    GatewayIntentBits.MessageContent, // Mesaj içeriği okuma (spam/flood) için zorunlu
+  ],
+  partials: [Partials.GuildMember],
+});
 
-  // Discord istemcisini oluştur
-  const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMembers,
-      GatewayIntentBits.GuildModeration,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-    ],
-    partials: [Partials.GuildMember],
-  });
+// Komut koleksiyonunu istemciye ekle (interactionCreate event'inde kullanılacak)
+client.commands = new Collection();
 
-  client.commands = new Collection();
+/**
+ * Botu başlat
+ */
+async function bootstrap() {
+  try {
+    // Kayıtlı ihlal verilerini JSON dosyasından yükle
+    await loadViolations();
 
-  async function bootstrap() {
-    try {
-      await loadViolations();
-      await loadCommands(client);
-      await loadEvents(client);
+    // Komutları ve event'leri dinamik olarak yükle
+    await loadCommands(client);
+    await loadEvents(client);
 
-      // Web sunucusunu login'den ÖNCE başlat ve çifte import döngüsünü kır
-      try {
-        const { startWebServer } = await import('../site/server.js');
-        if (typeof startWebServer === 'function') {
-          await startWebServer();
-        }
-      } catch (webErr) {
-        console.warn('[BİLDİRİM] Web sunucusu başlatılamadı:', webErr.message);
-      }
+    // Web yönetim sunucusunu başlat
+    await startWebServer(client);
 
-      // Discord'a sadece 1 defa giriş yap
-      await client.login(process.env.DISCORD_TOKEN);
-
-    } catch (error) {
-      console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
-      process.exit(1);
-    }
+    // Discord'a bağlan
+    await client.login(process.env.DISCORD_TOKEN);
+  } catch (error) {
+    console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
+    process.exit(1);
   }
-
-  bootstrap();
 }
 
+// Yakalanmamış hataları yakala — botun çökmesini engelle
 process.on('unhandledRejection', (reason) => {
   console.error('[HATA] İşlenmemiş Promise reddi:', reason);
 });
@@ -80,3 +78,5 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
   console.error('[HATA] Yakalanmamış istisna:', error);
 });
+
+bootstrap();

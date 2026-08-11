@@ -1,60 +1,65 @@
-import { readdirSync, statSync } from 'node:fs';
+/**
+ * Komut Handler
+ * src/commands/ altındaki tüm komut dosyalarını otomatik tarar ve yükler.
+ */
+
+import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { REST, Routes } from 'discord.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Alt klasörleri de tarayan yardımcı fonksiyon
-function getCommandFiles(dirPath) {
-  let files = [];
-  const items = readdirSync(dirPath);
+/**
+ * Belirtilen klasördeki komut dosyalarını yükler
+ * @param {import('discord.js').Client} client - Discord istemcisi
+ * @param {string} folderPath - Taranacak klasör yolu
+ */
+async function loadCommandsFromFolder(client, folderPath) {
+  const files = readdirSync(folderPath, { withFileTypes: true });
 
-  for (const item of items) {
-    const fullPath = join(dirPath, item);
-    if (statSync(fullPath).isDirectory()) {
-      files = files.concat(getCommandFiles(fullPath));
-    } else if (item.endsWith('.js')) {
-      files.push(fullPath);
+  for (const file of files) {
+    const fullPath = join(folderPath, file.name);
+
+    // Alt klasörleri de tara (örn: moderation/)
+    if (file.isDirectory()) {
+      await loadCommandsFromFolder(client, fullPath);
+      continue;
+    }
+
+    // Sadece .js dosyalarını yükle
+    if (!file.name.endsWith('.js')) continue;
+
+    try {
+      const commandModule = await import(pathToFileURL(fullPath).href);
+      const command = commandModule.default;
+
+      // Komut yapısını doğrula
+      if (!command?.data?.name || typeof command.execute !== 'function') {
+        console.warn(`[UYARI] Geçersiz komut dosyası atlandı: ${fullPath}`);
+        continue;
+      }
+
+      client.commands.set(command.data.name, command);
+      console.log(`[KOMUT] Yüklendi: /${command.data.name}`);
+    } catch (error) {
+      console.error(`[HATA] Komut yüklenemedi (${fullPath}):`, error);
     }
   }
-  return files;
 }
 
+/**
+ * Tüm komutları yükle
+ * @param {import('discord.js').Client} client - Discord istemcisi
+ */
 export async function loadCommands(client) {
   const commandsPath = join(__dirname, '..', 'commands');
 
   try {
-    const commandFiles = getCommandFiles(commandsPath);
-    const commandsData = [];
-
-    for (const filePath of commandFiles) {
-      const commandModule = await import(pathToFileURL(filePath).href);
-      const command = commandModule.default || commandModule;
-
-      if ('data' in command && 'execute' in command) {
-        client.commands.set(command.data.name, command);
-        commandsData.push(command.data.toJSON());
-      }
-    }
-
-    if (commandsData.length === 0) {
-      console.warn('[API] Kaydedilecek slash komutu bulunamadı.');
-      return;
-    }
-
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-    // Global kayıtları sıfırla, sunucuya kaydet
-    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: [] });
-    await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commandsData }
-    );
-
-    console.log(`[API] Toplam ${commandsData.length} slash komutu başarıyla yüklendi ve kaydedildi!`);
+    await loadCommandsFromFolder(client, commandsPath);
+    console.log(`[KOMUT] Toplam ${client.commands.size} komut yüklendi.`);
   } catch (error) {
-    console.error('[HATA] Komut yükleme hatası:', error);
+    console.error('[HATA] Komut handler başlatılamadı:', error);
+    throw error;
   }
 }
