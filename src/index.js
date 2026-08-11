@@ -22,14 +22,14 @@ const requiredEnvVars = [
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     console.error(`[HATA] Eksik ortam değişkeni: ${envVar}`);
-    console.error('Lütfen .env dosyanızı .env.example dosyasına göre doldurun.');
+    console.error('Lütfen .env dosyanızı doldurun.');
     process.exit(1);
   }
 }
 
-// Global çifte başlatma engelleyicisi
-if (!global.__BOT_STARTED__) {
-  global.__BOT_STARTED__ = true;
+// Global çifte başlatma engelleyicisi (Sadece TEK BİR KERE çalışmasını garanti eder)
+if (!global.__BOT_INITIALIZED__) {
+  global.__BOT_INITIALIZED__ = true;
 
   // Discord istemcisini oluştur
   const client = new Client({
@@ -51,17 +51,18 @@ if (!global.__BOT_STARTED__) {
       await loadCommands(client);
       await loadEvents(client);
 
-      await client.login(process.env.DISCORD_TOKEN);
-
-      // Web sunucusunu dinamik olarak tek seferlik import et
+      // Web sunucusunu login'den ÖNCE başlat ve çifte import döngüsünü kır
       try {
         const { startWebServer } = await import('../site/server.js');
         if (typeof startWebServer === 'function') {
-          await startWebServer(client);
+          await startWebServer();
         }
       } catch (webErr) {
-        console.warn('[BİLDİRİM] Web sunucusu başlatılamadı veya mevcut değil:', webErr.message);
+        console.warn('[BİLDİRİM] Web sunucusu başlatılamadı:', webErr.message);
       }
+
+      // Discord'a sadece 1 defa giriş yap
+      await client.login(process.env.DISCORD_TOKEN);
 
     } catch (error) {
       console.error('[HATA] Bot başlatılırken bir sorun oluştu:', error);
