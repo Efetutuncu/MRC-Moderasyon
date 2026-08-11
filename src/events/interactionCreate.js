@@ -8,17 +8,19 @@ export default {
         await interaction.deferReply({ ephemeral: true });
 
         const member = interaction.member;
-        const unverifiedRoleId = process.env.UNVERIFIED_ROLE_ID; // Kayıtsız Rolü
-        const memberRoleId = process.env.MEMBER_ROLE_ID || process.env.UYE_ROL_ID; // Verilecek Üye Rolü
+        
+        // Rol Değişkenleri (.env paneline tam uyumlu)
+        const unverifiedRoleId = process.env.UNVERIFIED_ROLE || process.env.UNVERIFIED_ROLE_ID; // Silinecek Kayıtsız Rolü
+        const unregisteredRoleId = process.env.UNREGISTERED_ROLE || process.env.UNREGISTERED_ROLE_ID; // Verilecek Üye Rolü
 
-        // Kayıtsız rolünü al
+        // Kayıtsız (UNVERIFIED) rolünü al
         if (unverifiedRoleId && member.roles.cache.has(unverifiedRoleId)) {
           await member.roles.remove(unverifiedRoleId).catch((err) => console.error('[HATA] Kayıtsız rolü alınamadı:', err));
         }
 
-        // Üye rolünü ver
-        if (memberRoleId) {
-          await member.roles.add(memberRoleId).catch((err) => console.error('[HATA] Üye rolü verilemedi:', err));
+        // Üye (UNREGISTERED) rolünü ver
+        if (unregisteredRoleId) {
+          await member.roles.add(unregisteredRoleId).catch((err) => console.error('[HATA] Üye rolü verilemedi:', err));
         }
 
         await interaction.editReply({
