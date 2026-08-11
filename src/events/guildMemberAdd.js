@@ -1,3 +1,5 @@
+import { EmbedBuilder } from 'discord.js';
+
 const processedMembers = new Set();
 
 export default {
@@ -13,10 +15,18 @@ export default {
     if (!channel) return;
 
     try {
-      const memberCount = member.guild.memberCount;
+      // Şık Embed Mesaj Tasarımı
+      const welcomeEmbed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('🎉 Aramıza Yeni Biri Katıldı!')
+        .setDescription(`Hoş geldin ${member}! Sunucumuzda keyifli vakit geçirmeni dileriz.\n\nKayıt olmak için lütfen **kayıt kanalındaki** butona tıklamayı veya yetkilileri beklemeyi unutma!`)
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setFooter({ text: `${member.guild.name} • Toplam Üye: ${member.guild.memberCount}` })
+        .setTimestamp();
 
       await channel.send({
-        content: `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\nSeninle birlikte ${memberCount} kişi olduk.`,
+        content: `Hey ${member}, aramıza hoş geldin!`,
+        embeds: [welcomeEmbed],
       });
     } catch (err) {
       console.error('[HATA] Hoş geldin mesajı gönderilirken sorun oluştu:', err);
