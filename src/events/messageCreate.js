@@ -13,6 +13,7 @@ export default {
    * @param {import('discord.js').Message} message
    */
   async execute(message) {
+    // Botların ve sunucu dışı DM mesajlarının kontrolü
     if (!message.guild || message.author.bot) return;
 
     // Kayıtsız Üye Mesaj Engeli
@@ -33,15 +34,19 @@ async function blockUnregisteredMessage(message) {
     const unregisteredRoleId = process.env.UNREGISTERED_ROLE_ID;
     if (!unregisteredRoleId) return false;
 
+    // Yönetici yetkisi olan kişileri veya yetkilileri muaf tut
+    if (message.member?.permissions.has('Administrator')) return false;
+
     const member = message.member;
     if (!member || !member.roles.cache.has(unregisteredRoleId)) return false;
 
-    const regChannelId = process.env.REGISTRATION_CHANNEL_ID || '1533665242091884544';
+    const regChannelId = process.env.REGISTRATION_CHANNEL_ID;
 
-    // Eğer mesaj kayıt kanalı dışındaysa mesajı sil
-    if (message.channelId !== regChannelId) {
+    // Eğer mesaj kayıt kanalının dışındaysa sil ve uyar
+    if (regChannelId && message.channelId !== regChannelId) {
       await message.delete().catch(() => null);
 
+      // Aynı kanalda zaten aktif bir uyarı mesajı varsa tekrar tekrar spam atma
       const warning = await message.channel
         .send(`⚠️ ${message.author}, sunucuda mesaj yazabilmek için önce kayıt olmalısınız!`)
         .catch(() => null);
