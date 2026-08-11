@@ -15,8 +15,21 @@ export default {
    * @param {import('discord.js').Client} client - Discord istemcisi
    */
   async execute(member, client) {
-    await assignUnregisteredRole(member);
-    await sendWelcomeMessage(member);
+  const key = ${member.guild.id}:${member.id};
+
+  if (recentlyWelcomed.has(key)) {
+    return;
+  }
+
+  recentlyWelcomed.add(key);
+
+  setTimeout(() => {
+    recentlyWelcomed.delete(key);
+  }, 30000);
+
+  await assignUnregisteredRole(member);
+  await sendWelcomeMessage(member);
+}
   },
 };
 
