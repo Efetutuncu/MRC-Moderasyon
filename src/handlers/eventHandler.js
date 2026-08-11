@@ -18,7 +18,7 @@ export async function loadEvents(client) {
   const eventsPath = join(__dirname, '..', 'events');
 
   try {
-    // Mevcut dinamik dinleyicileri temizle (çifte tetiklenmeyi engeller)
+    // Mevcut tüm dinamik dinleyicileri temizle (çifte tetiklenmeyi engeller)
     client.removeAllListeners();
 
     const eventFiles = readdirSync(eventsPath).filter((file) => file.endsWith('.js'));
@@ -43,20 +43,18 @@ export async function loadEvents(client) {
           eventName = 'clientReady';
         }
 
-        // Event listener bağlama
         if (event.once) {
-          client.once(eventName, (...args) => event.execute(...args, client));
+          client.once(eventName, (...args) => event.execute(...args));
         } else {
-          client.on(eventName, (...args) => event.execute(...args, client));
+          client.on(eventName, (...args) => event.execute(...args));
         }
-
-        console.log(`[EVENT] Yüklendi: ${eventName}${event.once ? ' (tek seferlik)' : ''}`);
-      } catch (error) {
-        console.error(`[HATA] Event yüklenemedi (${filePath}):`, error);
+      } catch (err) {
+        console.error(`[HATA] Event yüklenirken sorun oluştu (${file}):`, err);
       }
     }
+
+    console.log(`[HANDLER] Toplam ${eventFiles.length} event başarıyla yüklendi.`);
   } catch (error) {
-    console.error('[HATA] Event handler başlatılamadı:', error);
-    throw error;
+    console.error('[HATA] Event dizini okunurken sorun oluştu:', error);
   }
 }
