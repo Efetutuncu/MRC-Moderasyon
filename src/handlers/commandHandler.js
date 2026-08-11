@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { REST, Routes } from 'discord.js';
@@ -6,23 +6,36 @@ import { REST, Routes } from 'discord.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Alt klasörleri de tarayan yardımcı fonksiyon
+function getCommandFiles(dirPath) {
+  let files = [];
+  const items = readdirSync(dirPath);
+
+  for (const item of items) {
+    const fullPath = join(dirPath, item);
+    if (statSync(fullPath).isDirectory()) {
+      files = files.concat(getCommandFiles(fullPath));
+    } else if (item.endsWith('.js')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 export async function loadCommands(client) {
   const commandsPath = join(__dirname, '..', 'commands');
 
   try {
-    const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
+    const commandFiles = getCommandFiles(commandsPath);
     const commandsData = [];
 
-    for (const file of commandFiles) {
-      const filePath = join(commandsPath, file);
+    for (const filePath of commandFiles) {
       const commandModule = await import(pathToFileURL(filePath).href);
       const command = commandModule.default || commandModule;
 
       if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
         commandsData.push(command.data.toJSON());
-      } else {
-        console.warn(`[UYARI] ${file} dosyasında "data" veya "execute" eksik.`);
       }
     }
 
@@ -33,17 +46,15 @@ export async function loadCommands(client) {
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-    // 1. Global komutları temizle
+    // Global kayıtları sıfırla, sunucuya kaydet
     await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: [] });
-
-    // 2. Sadece sunucuya yükle
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commandsData }
     );
 
-    console.log(`[API] Toplam ${commandsData.length} slash komutu başarıyla kaydedildi!`);
+    console.log(`[API] Toplam ${commandsData.length} slash komutu başarıyla yüklendi ve kaydedildi!`);
   } catch (error) {
-    console.error('[HATA] Komutlar yüklenirken/kaydedilirken sorun oluştu:', error);
+    console.error('[HATA] Komut yükleme hatası:', error);
   }
 }
