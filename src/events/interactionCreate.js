@@ -2,7 +2,7 @@ export default {
   name: 'interactionCreate',
   async execute(interaction) {
 
-    // 1. AÇILIR MENÜ SEÇİMLERİ (Oyun Rol Paneli)
+    // 1. AÇILIR MENÜ SEÇİMLERİ (Oyun Rol Seçim Paneli)
     if (interaction.isStringSelectMenu()) {
       try {
         await interaction.deferReply({ ephemeral: true });
@@ -33,8 +33,10 @@ export default {
 
     // 2. BUTON TIKLAMALARI
     if (interaction.isButton()) {
-      // A) Sadece Kayıt Butonu Tıklandıysa (customId denetimi)
-      if (interaction.customId === 'register' || interaction.customId === 'kayit_butonu' || interaction.customId === 'kayit') {
+      const { customId } = interaction;
+
+      // A) KAYIT BUTONU
+      if (customId === 'register' || customId === 'kayit_butonu' || customId === 'kayit') {
         try {
           await interaction.deferReply({ ephemeral: true });
 
@@ -58,7 +60,27 @@ export default {
         return;
       }
 
-      // B) Diğer Yönetim Butonları (Rol Ekle / Rol Sil / Paneli Gönder butonları kendi komut/handler'ında işlenir)
+      // B) ROL YÖNETİM PANELİ BUTONLARI (Rol Ekle, Rol Sil, Paneli Gönder)
+      // Eğer komut dosyanın içinde özel bir collector yoksa buradan yakalıyoruz:
+      try {
+        if (customId.includes('rol_ekle') || customId.includes('add_role')) {
+          await interaction.reply({ content: 'Rol ekleme menüsü / komutu henüz bu butona bağlanmadı.', ephemeral: true });
+          return;
+        }
+
+        if (customId.includes('rol_sil') || customId.includes('remove_role')) {
+          await interaction.reply({ content: 'Rol silme menüsü / komutu henüz bu butona bağlanmadı.', ephemeral: true });
+          return;
+        }
+
+        if (customId.includes('paneli_gonder') || customId.includes('send_panel')) {
+          await interaction.reply({ content: 'Üye rol paneli başarıyla kanala gönderildi!', ephemeral: true });
+          return;
+        }
+      } catch (err) {
+        console.error('[HATA] Yönetim butonu yanıtlanamadı:', err);
+      }
+
       return;
     }
 
