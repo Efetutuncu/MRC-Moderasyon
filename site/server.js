@@ -18,6 +18,9 @@ const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mrc-moderasyon-secret-key-2026';
 const BOT_SCRIPT = path.join(__dirname, '..', 'src', 'bot.js');
+// Render her container/instance için farklı bir kimlik verir. Yerelde PID,
+// aynı makinedeki ayrı web süreçlerini ayırt etmeye yardımcı olur.
+const INSTANCE_ID = process.env.RENDER_INSTANCE_ID || process.env.RENDER_SERVICE_ID || `local-${process.pid}`;
 
 // --- BOT SÜREÇ YÖNETİMİ ---
 let botProcess = null;
@@ -77,7 +80,7 @@ function startBot() {
     return { success: false, message: 'Bot zaten çalışıyor.' };
   }
 
-  addActivityLog('INFO', 'Bot başlatılıyor...');
+  addActivityLog('INFO', `Bot başlatılıyor (web instance: ${INSTANCE_ID}, PID: ${process.pid})...`);
 
   botProcess = fork(BOT_SCRIPT, [], {
     env: process.env,
@@ -134,10 +137,11 @@ function startBot() {
     }
   });
 
+  const childPid = botProcess.pid;
   botProcess.on('exit', (code) => {
     botStatus.online = false;
     botProcess = null;
-    addActivityLog(code === 0 ? 'INFO' : 'WARN', `Bot süreci sona erdi (kod: ${code ?? 'sinyal'}).`);
+    addActivityLog(code === 0 ? 'INFO' : 'WARN', `Bot süreci sona erdi (kod: ${code ?? 'sinyal'}, PID: ${childPid}).`);
   });
 
   botProcess.on('error', (err) => {
@@ -158,7 +162,24 @@ function stopBot() {
   addActivityLog('WARN', 'Bot durduruluyor...');
   // SIGTERM bot tarafında client.destroy() ile karşılanır. Bu, Discord
   // gateway bağlantısının da kapanmasını sağlar.
-  botProcess.kill('SIGTERM');
+  const processToStop = botProcess;
+  const didSendSignal = processToStop.kill('SIGTERM');
+  if (!didSendSignal) {
+    addActivityLog('ERROR', 'Bot sürecine kapatma sinyali gönderilemedi.');
+    return { success: false, message: 'Bot kapatma sinyali gönderilemedi.' };
+  }
+
+  // Discord istemcisi kapanma sinyalini karşılayamazsa sürecin sonsuza kadar
+  // kalmasını engelle. Normal durumda bu zamanlayıcı hiçbir işlem yapmaz.
+  const forceStopTimer = setTimeout(() => {
+    if (botProcess === processToStop) {
+      addActivityLog('WARN', `Bot kapanmaya yanıt vermedi; zorla kapatılıyor (PID: ${processToStop.pid}).`);
+      processToStop.kill('SIGKILL');
+    }
+  }, 10_000);
+  processToStop.once('exit', () => clearTimeout(forceStopTimer));
+
+  addActivityLog('INFO', `Bot için kapatma sinyali gönderildi (PID: ${processToStop.pid}).`);
   botStatus.online = false;
   return { success: true, message: 'Bot durduruldu.' };
 }
@@ -409,7 +430,7 @@ export async function startWebServer() {
   });
 
   app.listen(PORT, () => {
-    console.log(`[WEB] Yönetim Paneli aktif: http://localhost:${PORT}`);
+    console.log(`[WEB] Yönetim Paneli aktif: http://localhost:${PORT} | instance=${INSTANCE_ID} | pid=${process.pid}`);
 
     // Bulut ortamında (Koyeb, Railway vb.) botu otomatik başlat
     if (process.env.BOT_AUTOSTART === 'true') {
