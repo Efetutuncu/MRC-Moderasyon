@@ -5,6 +5,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   Client,
   Collection,
@@ -22,6 +24,42 @@ import { loadViolations } from './utils/violationTracker.js';
 import { getRoles } from './utils/roleConfig.js';
 
 const INSTANCE_ID = process.env.RENDER_INSTANCE_ID || process.env.RENDER_SERVICE_ID || `local-${process.pid}`;
+const LOCK_FILE = path.join(process.env.TMPDIR || '/tmp', 'mrc-moderasyon-bot.lock');
+
+/** Aynı container'da birden fazla Discord gateway bağlantısını engeller. */
+function acquireBotLock() {
+  try {
+    fs.writeFileSync(LOCK_FILE, String(process.pid), { encoding: 'utf8', flag: 'wx' });
+    return true;
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+
+    const existingPid = Number.parseInt(fs.readFileSync(LOCK_FILE, 'utf8'), 10);
+    try {
+      // Kilidi tutan süreç yaşıyorsa ikinci botu hiç başlatma.
+      process.kill(existingPid, 0);
+      console.error(`[BOT] Başlatma engellendi: bu instance'ta zaten bot çalışıyor (PID: ${existingPid}).`);
+      return false;
+    } catch {
+      // Önceki süreç beklenmedik şekilde kapandıysa eski kilidi temizle.
+      fs.unlinkSync(LOCK_FILE);
+      fs.writeFileSync(LOCK_FILE, String(process.pid), { encoding: 'utf8', flag: 'wx' });
+      return true;
+    }
+  }
+}
+
+function releaseBotLock() {
+  try {
+    if (fs.existsSync(LOCK_FILE) && fs.readFileSync(LOCK_FILE, 'utf8').trim() === String(process.pid)) {
+      fs.unlinkSync(LOCK_FILE);
+    }
+  } catch (error) {
+    console.warn('[BOT] Süreç kilidi temizlenemedi:', error.message);
+  }
+}
+
+if (!acquireBotLock()) process.exit(0);
 
 // Gerekli ortam değişkenlerini doğrula
 const requiredEnvVars = [
@@ -113,6 +151,7 @@ async function shutdown(signal) {
   try {
     client.destroy();
   } finally {
+    releaseBotLock();
     process.exit(0);
   }
 }
@@ -314,5 +353,7 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
   console.error('[HATA] Yakalanmamış istisna:', error);
 });
+
+process.once('exit', releaseBotLock);
 
 bootstrap();
