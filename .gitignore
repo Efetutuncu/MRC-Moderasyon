@@ -1,0 +1,31 @@
+# Bağımlılıklar
+node_modules/
+
+# Ortam değişkenleri (hassas veriler — Koyeb dashboard'dan girilecek)
+.env
+
+# Log dosyaları
+*.log
+logs/
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+
+# IDE / editör
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# npm
+npm-debug.log*
+package-lock.json
+
+# Çalışma zamanı verileri (sunucuda oluşturulur, GitHub'a yüklenmez)
+violations.json
+src/data/admins.json
+
+# Koyeb / build çıktıları
+.cache/
+dist/
