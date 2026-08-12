@@ -23,6 +23,10 @@ async function loadCommandsFromFolder(client, folderPath) {
 
     // Alt klasörleri de tara (örn: moderation/)
     if (file.isDirectory()) {
+      if (file.name === 'src' || file.name === 'site') {
+        console.warn(`[WARN] Skipping non-command directory: ${fullPath}`);
+        continue;
+      }
       await loadCommandsFromFolder(client, fullPath);
       continue;
     }
