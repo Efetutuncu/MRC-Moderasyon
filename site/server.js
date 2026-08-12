@@ -156,8 +156,9 @@ function stopBot() {
   }
 
   addActivityLog('WARN', 'Bot durduruluyor...');
+  // SIGTERM bot tarafında client.destroy() ile karşılanır. Bu, Discord
+  // gateway bağlantısının da kapanmasını sağlar.
   botProcess.kill('SIGTERM');
-  botProcess = null;
   botStatus.online = false;
   return { success: true, message: 'Bot durduruldu.' };
 }
@@ -253,11 +254,20 @@ export async function startWebServer() {
   });
 
   app.post('/api/bot/restart', authMiddleware, (req, res) => {
-    stopBot();
-    setTimeout(() => {
+    if (!botProcess) {
+      startBot();
+      return res.json({ message: 'Bot başlatılıyor...' });
+    }
+
+    // Yeni süreci sabit bir süre sonunda değil, eski bot Discord bağlantısını
+    // kapatıp gerçekten sonlandığında başlat. Aksi halde iki bot kısa süre de
+    // olsa aynı anda çalışarak olayları çift işleyebilir.
+    const processToRestart = botProcess;
+    processToRestart.once('exit', () => {
       startBot();
       addActivityLog('INFO', 'Bot yeniden başlatıldı.');
-    }, 1500);
+    });
+    stopBot();
     return res.json({ message: 'Bot yeniden başlatılıyor...' });
   });
 
