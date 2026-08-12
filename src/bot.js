@@ -21,6 +21,8 @@ import { loadEvents } from './handlers/eventHandler.js';
 import { loadViolations } from './utils/violationTracker.js';
 import { getRoles } from './utils/roleConfig.js';
 
+const INSTANCE_ID = process.env.RENDER_INSTANCE_ID || process.env.RENDER_SERVICE_ID || `local-${process.pid}`;
+
 // Gerekli ortam değişkenlerini doğrula
 const requiredEnvVars = [
   'DISCORD_TOKEN',
@@ -70,7 +72,7 @@ async function bootstrap() {
 
 // Bot hazır olduğunda üst sürece bildir
 client.once('ready', (readyClient) => {
-  console.log(`[BOT] ${readyClient.user.tag} olarak giriş yapıldı!`);
+  console.log(`[BOT] ${readyClient.user.tag} olarak giriş yapıldı! | instance=${INSTANCE_ID} | pid=${process.pid}`);
   const guild = readyClient.guilds.cache.first();
   if (process.send) {
     process.send({
@@ -105,7 +107,7 @@ const statusInterval = setInterval(() => {
 // Böylece süreç sonlansa bile gateway üzerinde kısa süreli "hayalet" bot
 // bağlantısı kalmaz.
 async function shutdown(signal) {
-  console.log(`[BOT] Kapatma sinyali alındı: ${signal}`);
+  console.log(`[BOT] Kapatma sinyali alındı: ${signal} | instance=${INSTANCE_ID} | pid=${process.pid}`);
   clearInterval(statusInterval);
 
   try {
