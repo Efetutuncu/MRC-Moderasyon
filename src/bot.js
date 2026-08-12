@@ -86,7 +86,7 @@ client.once('ready', (readyClient) => {
 });
 
 // Periyodik durum güncellemeleri (her 30 saniyede bir)
-setInterval(() => {
+const statusInterval = setInterval(() => {
   if (!client.isReady()) return;
   const guild = client.guilds.cache.first();
   if (process.send) {
@@ -100,6 +100,23 @@ setInterval(() => {
     });
   }
 }, 30_000);
+
+// Panelden durdurma isteği geldiğinde Discord bağlantısını önce kapat.
+// Böylece süreç sonlansa bile gateway üzerinde kısa süreli "hayalet" bot
+// bağlantısı kalmaz.
+async function shutdown(signal) {
+  console.log(`[BOT] Kapatma sinyali alındı: ${signal}`);
+  clearInterval(statusInterval);
+
+  try {
+    client.destroy();
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
 
 // --- IPC MESAJ DİNLEYİCİSİ (Web sunucusundan gelen emirler) ---
 process.on('message', async (msg) => {
