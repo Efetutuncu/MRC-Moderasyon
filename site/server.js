@@ -24,6 +24,7 @@ const INSTANCE_ID = process.env.RENDER_INSTANCE_ID || process.env.RENDER_SERVICE
 
 // --- BOT SÜREÇ YÖNETİMİ ---
 let botProcess = null;
+let shuttingDown = false;
 let botStatus = {
   online: false,
   tag: null,
@@ -183,6 +184,33 @@ function stopBot() {
   botStatus.online = false;
   return { success: true, message: 'Bot durduruldu.' };
 }
+
+/**
+ * Render deploy/suspend sırasında web süreci sonlandırılır. Bot child process
+ * ayrıca kapatılmazsa yetim kalır ve yeni deploy ile birlikte ikinci bir
+ * Discord bağlantısı oluşturur. Bu handler her deployda önce botu kapatır.
+ */
+function shutdownWebServer(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(`[WEB] Kapatma sinyali alındı: ${signal}`);
+
+  if (!botProcess) {
+    process.exit(0);
+    return;
+  }
+
+  const processToStop = botProcess;
+  stopBot();
+
+  processToStop.once('exit', () => process.exit(0));
+  // Çocuk süreç cevap vermezse Render'ın deployunu sonsuza kadar bekletme.
+  setTimeout(() => process.exit(0), 12_000).unref();
+}
+
+process.once('SIGTERM', () => shutdownWebServer('SIGTERM'));
+process.once('SIGINT', () => shutdownWebServer('SIGINT'));
 
 // --- WEB SUNUCUSUNU BAŞLAT ---
 export async function startWebServer() {
