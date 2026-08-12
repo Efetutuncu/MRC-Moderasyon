@@ -14,7 +14,6 @@ export default {
    */
   async execute(client) {
     try {
-      console.log(`[BOT] ${client.user.tag} olarak giriş yapıldı!`);
       console.log(`[BOT] ${client.guilds.cache.size} sunucuda aktif.`);
 
       // Yüklenen komutların JSON verilerini topla
