@@ -37,9 +37,14 @@ async function blockUnregisteredMessage(message) {
     if (!member || !member.roles.cache.has(unregisteredRoleId)) return false;
 
     const regChannelId = process.env.REGISTRATION_CHANNEL_ID || '1533665242091884544';
+    // Ticket kanalları bu kategori altında açılıyor. Kayıtsız kullanıcılar
+    // destek talebini yazabilsin; kategori dışındaki kanallarda engel sürer.
+    const unregisteredCategoryId =
+      process.env.UNREGISTERED_CATEGORY_ID || '1533665077176303787';
+    const isUnregisteredTicket = message.channel.parentId === unregisteredCategoryId;
 
-    // Eğer mesaj kayıt kanalı dışındaysa mesajı sil
-    if (message.channelId !== regChannelId) {
+    // Kayıt kanalı ve Kayıtsız kategorisindeki ticket kanalları serbesttir.
+    if (message.channelId !== regChannelId && !isUnregisteredTicket) {
       await message.delete().catch(() => null);
 
       const warning = await message.channel
