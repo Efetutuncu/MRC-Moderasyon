@@ -42,8 +42,8 @@ export function saveAdmins(admins) {
 export async function initSeedAdmin() {
   const admins = getAdmins();
 
-  const defaultEmail = process.env.ADMIN_EMAIL || 'admin@mrc.com';
-  const defaultPassword = process.env.ADMIN_PASSWORD || 'mrc123456';
+  const defaultEmail = process.env.ADMIN_EMAIL || 'admin@quuinx.com';
+  const defaultPassword = process.env.ADMIN_PASSWORD || 'quuinx123456';
 
   const existingSuperadmin = admins.find((a) => a.role === 'superadmin' || a.email.toLowerCase() === defaultEmail.toLowerCase());
 

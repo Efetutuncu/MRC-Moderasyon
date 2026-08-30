@@ -1,5 +1,5 @@
 /**
- * MRC Moderasyon - Discord Bot Süreci
+ * Quuinx Moderasyon - Discord Bot Süreci
  * Sadece Discord bağlantısını yönetir. Web sunucusu buraya dahil değildir.
  * Bu dosya site/server.js tarafından child_process ile başlatılır.
  */
@@ -200,7 +200,7 @@ process.on('message', async (msg) => {
           'Aşağıdaki menüden oynamak istediğiniz oyunların rollerini seçebilirsiniz!\nSeçtiğiniz roller profilinize otomatik eklenecektir.'
         )
         .setColor(0x5865f2)
-        .setFooter({ text: 'MRC Moderasyon Sistemleri' });
+        .setFooter({ text: 'Quuinx Moderasyon Sistemleri' });
 
       const options = roles.map((r) => ({
         label: r.label,

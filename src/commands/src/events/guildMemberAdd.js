@@ -69,7 +69,7 @@ async function sendWelcomeMessage(member) {
     }
 
     const welcomeMessage =
-      `MRC Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\n` +
+      `Quuinx Topluluğuna hoş geldin ${member}! Sunucumuzda keyifli vakitler dileriz. Sunucu kurallarını okumayı ve uygulamayı unutma!\n` +
       `Seninle birlikte ${member.guild.memberCount} kişi olduk.`;
 
     await welcomeChannel.send(welcomeMessage);

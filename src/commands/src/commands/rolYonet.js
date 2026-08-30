@@ -14,7 +14,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
     const embed = new EmbedBuilder()
-        .setTitle('⚙️ MRC Topluluğu - Rol Yönetim Paneli')
+        .setTitle('⚙️ Quuinx Topluluğu - Rol Yönetim Paneli')
         .setDescription('Aşağıdaki butonları kullanarak üye paneline oyun rolleri ekleyebilir, silebilir veya paneli kanala gönderebilirsiniz.')
         .setColor(0x2b2d31);
 

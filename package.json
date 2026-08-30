@@ -1,7 +1,7 @@
 {
-  "name": "mrc-moderasyon",
+  "name": "quuinx-moderasyon",
   "version": "1.0.0",
-  "description": "MRC Moderasyon - Discord moderasyon botu",
+  "description": "Quuinx Moderasyon - Discord moderasyon botu",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

@@ -1,5 +1,5 @@
 /**
- * MRC Moderasyon - Discord Bot Süreci
+ * Quuinx Moderasyon - Discord Bot Süreci
  * Sadece Discord bağlantısını yönetir. Web sunucusu buraya dahil değildir.
  * Bu dosya site/server.js tarafından child_process ile başlatılır.
  */
@@ -24,7 +24,7 @@ import { loadViolations } from './utils/violationTracker.js';
 import { getRoles } from './utils/roleConfig.js';
 
 const INSTANCE_ID = process.env.RENDER_INSTANCE_ID || process.env.RENDER_SERVICE_ID || `local-${process.pid}`;
-const LOCK_FILE = path.join(process.env.TMPDIR || '/tmp', 'mrc-moderasyon-bot.lock');
+const LOCK_FILE = path.join(process.env.TMPDIR || '/tmp', 'quuinx-moderasyon-bot.lock');
 
 /** Aynı container'da birden fazla Discord gateway bağlantısını engeller. */
 function acquireBotLock() {
@@ -261,7 +261,7 @@ process.on('message', async (msg) => {
           'Aşağıdaki menüden oynamak istediğiniz oyunların rollerini seçebilirsiniz!\nSeçtiğiniz roller profilinize otomatik eklenecektir.'
         )
         .setColor(0x5865f2)
-        .setFooter({ text: 'MRC Moderasyon Sistemleri' });
+        .setFooter({ text: 'Quuinx Moderasyon Sistemleri' });
 
       const options = roles.map((r) => ({
         label: r.label,
