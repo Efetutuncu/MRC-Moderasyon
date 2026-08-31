@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   // --- STATE ---
   let currentUser = null;
-  let authToken = localStorage.getItem('quuinx_token') || null;
+  let authToken = localStorage.getItem('mrc_token') || null;
 
   // DOM ELEMANLARI
   const loginScreen = document.getElementById('login-screen');
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        localStorage.removeItem('quuinx_token');
+        localStorage.removeItem('mrc_token');
         authToken = null;
         showLoginScreen();
         return;
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function logout() {
     authToken = null;
     currentUser = null;
-    localStorage.removeItem('quuinx_token');
+    localStorage.removeItem('mrc_token');
     showLoginScreen();
     showToast('Oturum kapatıldı.', 'info');
   }
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       authToken = data.token;
       currentUser = data.user;
-      localStorage.setItem('quuinx_token', authToken);
+      localStorage.setItem('mrc_token', authToken);
 
       showToast('Başarıyla giriş yapıldı!', 'success');
       showDashboard();

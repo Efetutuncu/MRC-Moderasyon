@@ -1,4 +1,4 @@
-# Quuinx Moderasyon — Discord Bot & Web Yönetim Paneli
+# MRC Moderasyon — Discord Bot & Web Yönetim Paneli
 
 Discord sunucunuzu yönetmek için geliştirilmiş, modern web arayüzüne sahip Discord moderasyon botu.
 
@@ -23,7 +23,7 @@ git init
 git add .
 git commit -m "İlk commit"
 git branch -M main
-git remote add origin https://github.com/KULLANICI_ADINIZ/quuinx-moderasyon.git
+git remote add origin https://github.com/KULLANICI_ADINIZ/mrc-moderasyon.git
 git push -u origin main
 ```
 
@@ -35,7 +35,7 @@ git push -u origin main
 ### 3. Yeni Servis Oluştur
 
 1. Koyeb Dashboard → **"Create Service"** → **"GitHub"**
-2. Repository olarak `quuinx-moderasyon`'u seçin
+2. Repository olarak `mrc-moderasyon`'u seçin
 3. **Build & Run** ayarları otomatik algılanır (Node.js)
 4. **"Environment Variables"** bölümüne gidin ve şu değişkenleri ekleyin:
 
@@ -86,7 +86,7 @@ Web paneli: **http://localhost:3000**
 ## 📁 Proje Yapısı
 
 ```
-quuinx-moderasyon/
+mrc-moderasyon/
 ├── src/
 │   ├── bot.js              # Discord bot (ayrı süreç)
 │   ├── commands/           # Slash komutları (/ban, /kick, /timeout, /rol-yonet)

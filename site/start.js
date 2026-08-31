@@ -1,5 +1,5 @@
 /**
- * Quuinx Moderasyon - Web Sunucusu Giriş Noktası
+ * MRC Moderasyon - Web Sunucusu Giriş Noktası
  * Sadece web panelini başlatır. Bot buradan kontrol edilir.
  *
  * Kullanım: node site/start.js

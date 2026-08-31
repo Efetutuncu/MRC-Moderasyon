@@ -16,7 +16,7 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const JWT_SECRET = process.env.JWT_SECRET || 'quuinx-moderasyon-secret-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'mrc-moderasyon-secret-key-2026';
 const BOT_SCRIPT = path.join(__dirname, '..', 'src', 'bot.js');
 
 // --- BOT SÜREÇ YÖNETİMİ ---

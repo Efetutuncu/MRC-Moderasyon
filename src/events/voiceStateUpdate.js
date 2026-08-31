@@ -29,7 +29,7 @@ export default {
 
         // Kullanıcıya özel mesaj gönder
         await member
-          .send('⚠️ **Quuinx Topluluğu:** Sese katılabilmek için önce kayıt olmalısınız!')
+          .send('⚠️ **MRC Topluluğu:** Sese katılabilmek için önce kayıt olmalısınız!')
           .catch(() => null);
       } catch (error) {
         console.error('[HATA] Kayıtsız üye sesten atılamadı:', error);

@@ -78,7 +78,7 @@ export async function handleRoleInteractions(interaction) {
         if (roles.length === 0) return interaction.reply({ content: 'Önce en az 1 tane rol eklemelisiniz!', ephemeral: true });
 
         const embed = new EmbedBuilder()
-            .setTitle('🎮 Quuinx Topluluğu - Rol Alma Paneli')
+            .setTitle('🎮 MRC Topluluğu - Rol Alma Paneli')
             .setDescription('Oynadığınız oyunların rollerini almak için aşağıdaki menüden seçim yapabilirsiniz.\n\n*İşareti kaldırdığınız oyunun rolü profilinizden otomatik silinir.*')
             .setColor(0x5865f2);
 

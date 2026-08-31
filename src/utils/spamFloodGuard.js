@@ -182,8 +182,8 @@ async function applyViolation(message, reason, violationMessages) {
   const timeoutMs = reason === 'Spam' ? SPAM_TIMEOUT_MS : FLOOD_TIMEOUT_MS;
   const dmMessage =
     reason === 'Spam'
-      ? `Merhaba <@${author.id}> Spam sebebinden ötürü 5 dakika boyunca susturuldun. Eğer bu ihlali yapmaya devam edersen kara listeye düşebilirsin. Lütfen sunucu kurallarımızı okuyalım ve sunucu kurallarımıza uyalım. Quuinx Topluluğu`
-      : `Merhaba <@${author.id}> Flood sebebinden ötürü 1 dakika boyunca susturuldun. Eğer bu ihlali yapmaya devam edersen kara listeye düşebilirsin. Lütfen sunucu kurallarımızı okuyalım ve sunucu kurallarımıza uyalım. Quuinx Topluluğu`;
+      ? `Merhaba <@${author.id}> Spam sebebinden ötürü 5 dakika boyunca susturuldun. Eğer bu ihlali yapmaya devam edersen kara listeye düşebilirsin. Lütfen sunucu kurallarımızı okuyalım ve sunucu kurallarımıza uyalım. MRC Topluluğu`
+      : `Merhaba <@${author.id}> Flood sebebinden ötürü 1 dakika boyunca susturuldun. Eğer bu ihlali yapmaya devam edersen kara listeye düşebilirsin. Lütfen sunucu kurallarımızı okuyalım ve sunucu kurallarımıza uyalım. MRC Topluluğu`;
 
   await deleteViolationMessages(violationMessages);
 

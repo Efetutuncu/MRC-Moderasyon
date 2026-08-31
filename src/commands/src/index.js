@@ -1,5 +1,5 @@
 /**
- * Quuinx Moderasyon - Ana giriş noktası
+ * MRC Moderasyon - Ana giriş noktası
  * Bot istemcisini oluşturur, handler'ları yükler ve Discord'a bağlanır.
  */
 
