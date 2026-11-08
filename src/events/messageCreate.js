@@ -5,6 +5,7 @@
  */
 
 import { checkMessage } from '../utils/spamFloodGuard.js';
+import { rememberMessage } from '../utils/logService.js';
 
 export default {
   name: 'messageCreate',
@@ -14,6 +15,9 @@ export default {
    */
   async execute(message) {
     if (!message.guild || message.author.bot) return;
+
+    // Silme/düzenleme logları için içerik kısa süreli bellekte tutulur.
+    rememberMessage(message);
 
     // Kayıtsız Üye Mesaj Engeli
     const isBlocked = await blockUnregisteredMessage(message);
