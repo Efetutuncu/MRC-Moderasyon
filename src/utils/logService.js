@@ -8,6 +8,9 @@ const LOG_CHANNEL_ID = () => process.env.MRC_LOG_CHANNEL_ID?.trim();
 const DEDUPE_WINDOW_MS = 4_000;
 const AUDIT_WINDOW_MS = 15_000;
 const recentEvents = new Map();
+const messageSnapshots = new Map();
+const MESSAGE_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
+const MAX_MESSAGE_SNAPSHOTS = 2_000;
 let warnedMissingChannel = false;
 let warnedInvalidChannel = false;
 
@@ -75,6 +78,41 @@ export function turkeyIso(timestamp = Date.now()) {
 
 export function discordTime(timestamp = Date.now()) {
   return `<t:${Math.floor(timestamp / 1000)}:F>`;
+}
+
+function cleanupMessageSnapshots(now = Date.now()) {
+  for (const [messageId, snapshot] of messageSnapshots) {
+    if (snapshot.expiresAt <= now) messageSnapshots.delete(messageId);
+  }
+  while (messageSnapshots.size > MAX_MESSAGE_SNAPSHOTS) {
+    messageSnapshots.delete(messageSnapshots.keys().next().value);
+  }
+}
+
+/** Mesaj silinmeden önce içeriğini yalnızca bot belleğinde kısa süreli tutar. */
+export function rememberMessage(message) {
+  if (!message?.id || !message.guild || message.author?.bot) return;
+  const now = Date.now();
+  cleanupMessageSnapshots(now);
+  messageSnapshots.set(message.id, {
+    id: message.id,
+    guildId: message.guild.id,
+    channelId: message.channelId,
+    authorId: message.author?.id ?? null,
+    authorName: userName(message.author),
+    content: message.content ?? '',
+    expiresAt: now + MESSAGE_SNAPSHOT_TTL_MS,
+  });
+}
+
+/** Silinmiş mesajın kısa süreli bellekteki kopyasını verir. */
+export function getMessageSnapshot(messageId) {
+  cleanupMessageSnapshots();
+  return messageSnapshots.get(messageId) ?? null;
+}
+
+export function forgetMessageSnapshot(messageId) {
+  messageSnapshots.delete(messageId);
 }
 
 function cleanupDedupe(now) {
