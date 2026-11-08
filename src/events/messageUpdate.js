@@ -1,4 +1,4 @@
-import { LogColors, logEvent } from '../utils/logService.js';
+import { getMessageSnapshot, LogColors, logEvent, rememberMessage } from '../utils/logService.js';
 
 export default {
   name: 'messageUpdate',
@@ -7,7 +7,8 @@ export default {
     if (oldMessage.partial) await oldMessage.fetch().catch(() => null);
     if (newMessage.partial) await newMessage.fetch().catch(() => null);
 
-    const before = oldMessage.content ?? '';
+    const snapshot = getMessageSnapshot(newMessage.id);
+    const before = oldMessage.content ?? snapshot?.content ?? '';
     const after = newMessage.content ?? '';
     if (before === after) return;
 
@@ -26,5 +27,6 @@ export default {
         { name: 'Yeni İçerik', value: after || 'Mesaj boş bırakıldı.', inline: false },
       ],
     });
+    rememberMessage(newMessage);
   },
 };
