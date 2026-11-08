@@ -38,6 +38,14 @@ Mevcut moderasyon özellikleri için gereken Ban Members, Kick Members ve Modera
 
 AutoMod tetikleme logları için botun kullandığı uygulama ayarlarında Auto Moderation Execution event erişimi de açık olmalıdır. Davet logları için Guild Invites intent kod tarafında etkinleştirildi.
 
+## Silinen mesaj içerikleri
+
+Bot, gelen kullanıcı mesajlarının içeriğini yalnızca çalışma belleğinde **en fazla 6 saat** ve en fazla **2.000 mesaj** olacak şekilde tutar. Mesaj silinirse bu kısa süreli kopya log embed'inde gösterilir ve ardından bellekten kaldırılır.
+
+- Bot yeniden başlarsa bu geçici bellek temizlenir.
+- Bot mesajı görmeden önce silinmişse Discord içeriği vermeyebilir.
+- Mesaj içerikleri harici bir veritabanına veya üçüncü taraf servise kaydedilmez.
+
 ## Test
 
 Deploy sonrasında şunları test edin:
