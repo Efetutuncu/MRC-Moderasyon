@@ -1,5 +1,5 @@
 import { AuditLogEvent } from 'discord.js';
-import { LogColors, auditExecutor, findAuditEntry, logEvent } from '../utils/logService.js';
+import { LogColors, auditExecutor, findAuditEntry, forgetMessageSnapshot, getMessageSnapshot, logEvent } from '../utils/logService.js';
 
 export default {
   name: 'messageDeleteBulk',
@@ -9,13 +9,17 @@ export default {
 
     const audit = await findAuditEntry(guild, AuditLogEvent.MessageBulkDelete, { channelId: channel.id });
     const authors = [...new Set(
-      messages.map((message) => message.author ? `${message.author.username} (${message.author.id})` : 'Bilinmiyor')
+      messages.map((message) => {
+        const snapshot = getMessageSnapshot(message.id);
+        return message.author ? `${message.author.username} (${message.author.id})` : snapshot?.authorId ? `${snapshot.authorName} (${snapshot.authorId})` : 'Bilinmiyor';
+      })
     )].slice(0, 15);
 
     const previews = messages
-      .filter((message) => message.content)
+      .map((message) => ({ message, snapshot: getMessageSnapshot(message.id) }))
+      .filter(({ message, snapshot }) => message.content || snapshot?.content)
       .first(5)
-      .map((message) => `${message.author?.username ?? 'Bilinmiyor'}: ${message.content}`)
+      .map(({ message, snapshot }) => `${message.author?.username ?? snapshot?.authorName ?? 'Bilinmiyor'}: ${message.content || snapshot?.content}`)
       .join('\n');
 
     await logEvent(client, {
@@ -33,5 +37,6 @@ export default {
         { name: 'Erişilebilen İçerikler', value: previews || 'İçerik cache içinde yoktu.', inline: false },
       ],
     });
+    messages.forEach((message) => forgetMessageSnapshot(message.id));
   },
 };
